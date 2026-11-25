@@ -33,6 +33,7 @@
   }
   .score { font-size: 30px; font-weight: 800; color: #f9d423; }
   .per-click { font-size: 14px; opacity: 0.8; }
+  .per-sec { font-size: 14px; opacity: 0.8; }
 
   #clickBtn {
     width: 180px;
@@ -105,6 +106,7 @@
 <div class="stats">
   <div>67s: <span class="score" id="score">0</span></div>
   <div class="per-click">+<span id="perClick">1</span> per click</div>
+  <div class="per-sec">Auto-clicks: <span id="perSec">0</span>/sec</div>
 </div>
 
 <button id="clickBtn">67</button>
@@ -143,6 +145,7 @@ if (saved) {
 const $ = (id) => document.getElementById(id);
 const scoreEl = $('score');
 const perClickEl = $('perClick');
+const perSecEl = $('perSec');
 const listEl = $('upgradeList');
 const clickBtn = $('clickBtn');
 
@@ -150,7 +153,6 @@ const costOf = (u) => Math.floor(u.baseCost * Math.pow(u.costMult, u.level));
 const fmt = (n) => n >= 1e6 ? (n/1e6).toFixed(2)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'k' : Math.floor(n);
 
 function recalc() {
-  // Derived stats
   state.clickPower = 1
     + state.upgrades.find(u => u.id === 'power').level * 1
     + state.upgrades.find(u => u.id === 'mega').level * 5;
@@ -163,6 +165,7 @@ function render() {
   recalc();
   scoreEl.textContent = fmt(state.score);
   perClickEl.textContent = state.clickPower;
+  perSecEl.textContent = state.autoPerSec;
   listEl.innerHTML = '';
   for (const u of state.upgrades) {
     const cost = costOf(u);
@@ -197,10 +200,9 @@ function save() {
 clickBtn.addEventListener('click', (e) => {
   state.score += state.clickPower;
   clickBtn.classList.remove('pulse');
-  void clickBtn.offsetWidth; // restart animation
+  void clickBtn.offsetWidth;
   clickBtn.classList.add('pulse');
 
-  // Floating "+N"
   const f = document.createElement('div');
   f.className = 'float';
   f.textContent = '+' + state.clickPower;
@@ -220,12 +222,27 @@ setInterval(() => {
   }
 }, 1000);
 
-// ---- Reset ----
-$('resetBtn').addEventListener('click', () => {
-  if (confirm('Reset all progress?')) {
-    localStorage.removeItem('clicker67');
-    location.reload();
-  }
+// ---- Reset (fully working) ----
+const resetBtn = $('resetBtn');
+resetBtn.addEventListener('click', () => {
+  const ok = confirm('Reset all progress? This cannot be undone.');
+  if (!ok) return;
+
+  // 1. Wipe the save
+  localStorage.removeItem('clicker67');
+
+  // 2. Reset in-memory state (so it works even if save was stale)
+  state.score = 0;
+  state.clickPower = 1;
+  state.autoPerSec = 0;
+  for (const u of state.upgrades) u.level = 0;
+
+  // 3. Re-render immediately
+  render();
+
+  // 4. Success feedback (page does NOT reload, so it's instant)
+  resetBtn.textContent = 'Reset! ✓';
+  setTimeout(() => { resetBtn.textContent = 'Reset game'; }, 1200);
 });
 
 render();
