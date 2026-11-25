@@ -234,10 +234,9 @@ clickBtn.addEventListener('click', (e) => {
 });
 
 // ---- Real-time auto income (throttle-proof) ----
-// Instead of adding a fixed amount per interval tick, we compute how much
-// REAL time has actually elapsed since the last tick and award exactly that.
-// Whether the interval fires after 1s or 30s (background throttle), the total
-// 67s earned per real second stays exactly equal to autoPerSec.
+// Award income based on REAL elapsed time, not per interval tick, so the
+// 67s-per-second rate stays exactly equal to autoPerSec even when the browser
+// throttles timers in a background tab.
 function tick() {
   const now = Date.now();
   const elapsed = (now - state.lastTick) / 1000; // real seconds elapsed
@@ -249,8 +248,7 @@ function tick() {
   }
 }
 setInterval(tick, 1000);
-// Also catch up the instant the tab becomes visible again, so the player
-// sees the correct total immediately instead of waiting for the next tick.
+// Catch up immediately when the tab becomes visible again
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) tick();
 });
