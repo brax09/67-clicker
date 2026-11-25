@@ -26,7 +26,6 @@
   .per-click { font-size: 14px; opacity: 0.8; }
   .per-sec { font-size: 14px; opacity: 0.8; }
 
-  /* Button: no visible box, just the gradient 67 */
   #clickBtn {
     width: 260px;
     height: 260px;
@@ -39,29 +38,27 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: visible;   /* never clip the digits */
+    overflow: visible;
   }
   #clickBtn:active { transform: scale(0.94); }
   #clickBtn.pulse { animation: pulse 0.25s ease; }
   @keyframes pulse { 50% { transform: scale(1.06); } }
 
-  /* The 67 itself: gradient text, sized to fit the button without clipping */
   #clickBtn .big67 {
-    font-size: 200px;      /* smaller than the 260px box so nothing is cut */
-    line-height: 1;        /* no extra leading */
+    font-size: 200px;
+    line-height: 1;
     font-weight: 900;
-    letter-spacing: -4px;  /* pull digits closer so both fit width-wise */
+    letter-spacing: -4px;
     background: linear-gradient(90deg, #f9d423, #ff4e50);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
     display: block;
-    padding: 0 8px;        /* tiny breathing room inside the box */
+    padding: 0 8px;
     user-select: none;
-    pointer-events: none;  /* clicks hit the button, not the span */
+    pointer-events: none;
   }
 
-  /* Shop: always rendered below the button */
   .shop {
     width: 100%;
     max-width: 460px;
@@ -146,6 +143,8 @@ const state = {
     { id: 'turbo',  name: 'Turbo Bot',       desc: '+5 per second',   baseCost: 1000,costMult: 1.40, level: 0 },
   ],
   autoPerSec: 0,
+  // Track real elapsed time so background throttling can't cheat the player
+  lastTick: Date.now(),
 };
 
 // ---- Load saved game ----
@@ -154,6 +153,8 @@ if (saved) {
   try {
     const data = JSON.parse(saved);
     Object.assign(state, data);
+    // Reset lastTick to "now" on load so we don't award offline time
+    state.lastTick = Date.now();
   } catch (e) { console.warn('Save corrupted, starting fresh'); }
 }
 
@@ -183,7 +184,6 @@ function render() {
   perClickEl.textContent = state.clickPower;
   perSecEl.textContent = state.autoPerSec;
 
-  // Rebuild upgrade list every frame so affordability + levels stay in sync
   listEl.innerHTML = '';
   for (const u of state.upgrades) {
     const cost = costOf(u);
@@ -233,13 +233,27 @@ clickBtn.addEventListener('click', (e) => {
   render();
 });
 
-// ---- Auto income ----
-setInterval(() => {
-  if (state.autoPerSec > 0) {
-    state.score += state.autoPerSec;
+// ---- Real-time auto income (throttle-proof) ----
+// Instead of adding a fixed amount per interval tick, we compute how much
+// REAL time has actually elapsed since the last tick and award exactly that.
+// Whether the interval fires after 1s or 30s (background throttle), the total
+// 67s earned per real second stays exactly equal to autoPerSec.
+function tick() {
+  const now = Date.now();
+  const elapsed = (now - state.lastTick) / 1000; // real seconds elapsed
+  state.lastTick = now;
+
+  if (state.autoPerSec > 0 && elapsed > 0) {
+    state.score += state.autoPerSec * elapsed;
     render();
   }
-}, 1000);
+}
+setInterval(tick, 1000);
+// Also catch up the instant the tab becomes visible again, so the player
+// sees the correct total immediately instead of waiting for the next tick.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) tick();
+});
 
 // ---- Reset (fully working) ----
 const resetBtn = $('resetBtn');
@@ -250,6 +264,7 @@ resetBtn.addEventListener('click', () => {
   state.score = 0;
   state.clickPower = 1;
   state.autoPerSec = 0;
+  state.lastTick = Date.now();
   for (const u of state.upgrades) u.level = 0;
   render();
   resetBtn.textContent = 'Reset! ✓';
