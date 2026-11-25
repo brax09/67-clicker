@@ -18,28 +18,48 @@
     padding: 24px 16px;
     user-select: none;
     text-align: center;
+    overflow: hidden;
+    position: relative;
   }
+
+  /* Scattered "67" background layer */
+  #bg67 {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .bg67-item {
+    position: absolute;
+    font-weight: 900;
+    color: #f9d423;
+    opacity: 0.5;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  /* Foreground content sits above the scattered 67s */
   h1 {
+    position: relative;
+    z-index: 1;
     font-size: clamp(44px, 12vw, 96px);
     letter-spacing: 4px;
     background: linear-gradient(90deg, #f9d423, #ff4e50);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    margin-bottom: 12px;
+    margin-bottom: 48px;
     animation: glow 2.5s ease-in-out infinite;
   }
   @keyframes glow {
     0%, 100% { filter: drop-shadow(0 0 8px rgba(249, 212, 35, 0.3)); }
     50%      { filter: drop-shadow(0 0 24px rgba(249, 212, 35, 0.7)); }
   }
-  .tagline {
-    font-size: 15px;
-    opacity: 0.65;
-    letter-spacing: 1px;
-    margin-bottom: 48px;
-  }
+
   #startBtn {
+    position: relative;
+    z-index: 1;
     padding: 18px 64px;
     font-size: 22px;
     font-weight: 800;
@@ -57,21 +77,39 @@
     box-shadow: 0 0 50px rgba(249, 212, 35, 0.7);
   }
   #startBtn:active { transform: scale(0.96); }
-  .footer {
-    position: fixed;
-    bottom: 16px;
-    font-size: 12px;
-    opacity: 0.4;
-  }
 </style>
 </head>
 <body>
 
+<!-- Scattered 67 background (filled by script) -->
+<div id="bg67" aria-hidden="true"></div>
+
 <h1>67 CLICKER</h1>
-<p class="tagline">CLICK. UPGRADE. DOMINATE.</p>
 <button id="startBtn" onclick="location.href='game.html'">START</button>
 
-<div class="footer">Made with GitHub Pages</div>
+<script>
+  // Generate randomly oriented, randomly sized "67"s across the background
+  (function scatter67() {
+    const layer = document.getElementById('bg67');
+    const count = 40; // how many 67s to scatter
+
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement('div');
+      el.className = 'bg67-item';
+      el.textContent = '67';
+
+      const size = 18 + Math.random() * 60;          // 18px – 78px
+      const rot  = Math.random() * 360;               // full 0–360° rotation
+
+      el.style.fontSize = size + 'px';
+      el.style.left = (Math.random() * 100) + 'vw';
+      el.style.top  = (Math.random() * 100) + 'vh';
+      el.style.transform = `translate(-50%, -50%) rotate(${rot}deg)`;
+
+      layer.appendChild(el);
+    }
+  })();
+</script>
 
 </body>
 </html>
