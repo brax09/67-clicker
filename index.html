@@ -41,7 +41,7 @@
     will-change: transform;
   }
 
-  /* Rippling title — gradient spans the whole word, one ripple for the block */
+  /* Title wrapper: holds the ONE gradient that spans the whole word */
   h1 {
     position: relative;
     z-index: 1;
@@ -49,20 +49,24 @@
     letter-spacing: 4px;
     margin-bottom: 48px;
     display: inline-block;
+  }
+
+  /* Each letter ripples individually (wave travels left→right) */
+  h1 .char {
+    display: inline-block;
+    animation: rippleChar 1.8s ease-in-out infinite;
+    will-change: transform;
+    /* Gradient is applied here but sized to the FULL title via background-size
+       trick below, so the color flows across the whole word, not per letter */
     background: linear-gradient(90deg, #f9d423, #ff4e50);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    animation: rippleBlock 3.6s ease-in-out infinite;
-    will-change: transform;
   }
-  /* Ripple for ~1.8s, then rest for ~1.8s, so waves are spaced by
-     about the same duration as the ripple itself */
-  @keyframes rippleBlock {
-    0%   { transform: translateY(0) scale(1); }
-    25%  { transform: translateY(-10px) scale(1.06); }
-    50%  { transform: translateY(0) scale(1); }
-    100% { transform: translateY(0) scale(1); }
+
+  @keyframes rippleChar {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50%      { transform: translateY(-10px) scale(1.06); }
   }
 
   #startBtn {
@@ -92,27 +96,67 @@
 <!-- Falling 67 background (filled by script) -->
 <div id="bg67" aria-hidden="true"></div>
 
-<h1>67 CLICKER</h1>
+<h1 id="title">67 CLICKER</h1>
 <button id="startBtn" onclick="location.href='game.html'">START</button>
 
 <script>
+// ---- Split title into per-letter spans, and give each one a gradient that
+//      is sized/positioned to the WHOLE title so the gradient flows across
+//      all letters as a single continuous gradient (not repeated per letter) ----
+(function splitTitle() {
+  const h1 = document.getElementById('title');
+  const text = h1.textContent;
+  h1.textContent = '';
+
+  const spans = [];
+  [...text].forEach((ch) => {
+    const span = document.createElement('span');
+    span.className = 'char';
+    span.textContent = ch === ' ' ? '\u00A0' : ch;
+    h1.appendChild(span);
+    spans.push(span);
+  });
+
+  // After layout, measure the full title width and apply a shared gradient
+  // background to each letter, offset so together they form one gradient.
+  requestAnimationFrame(() => {
+    const totalWidth = h1.getBoundingClientRect().width;
+    spans.forEach((span) => {
+      const r = span.getBoundingClientRect();
+      const left = r.left - h1.getBoundingClientRect().left;
+
+      // Make the gradient span the full title width, anchored so this
+      // letter shows the correct slice of the master gradient.
+      span.style.backgroundImage = 'linear-gradient(90deg, #f9d423, #ff4e50)';
+      span.style.backgroundSize = totalWidth + 'px 100%';
+      span.style.backgroundPosition = (-left) + 'px 0';
+      span.style.webkitBackgroundClip = 'text';
+      span.style.backgroundClip = 'text';
+      span.style.color = 'transparent';
+
+      // Stagger so the ripple is a traveling wave
+      span.style.animationDelay = (spans.indexOf(span) * 0.09) + 's';
+    });
+  });
+})();
+
 // ---- Falling 67s with varied speed + slight spin ----
 (function falling67() {
   const layer = document.getElementById('bg67');
-  const count = 60; // matches the 1.5x density from before
+  const count = 60;
 
   for (let i = 0; i < count; i++) {
     const el = document.createElement('div');
     el.className = 'bg67-item';
     el.textContent = '67';
 
-    const size     = 18 + Math.random() * 60;      // 18–78px
-    const duration = 6 + Math.random() * 14;       // 6–20s to fall (faster/slower)
-    const delay    = -Math.random() * duration;    // negative delay = already mid-fall on load
-    const drift    = (Math.random() - 0.5) * 120;  // horizontal drift in px
-    const startRot = Math.random() * 360;          // starting angle
-    const spin     = (Math.random() - 0.5) * 360;  // total rotation over the fall
-    const left     = Math.random() * 100;          // start position across the screen
+    const size     = 18 + Math.random() * 60;
+    const duration = 6 + Math.random() * 14;
+    const delay    = -Math.random() * duration;
+    const drift    = (Math.random() - 0.5) * 120;
+    const startRot = Math.random() * 360;
+    const spin     = (Math.random() - 0.5) * 360;
+    const left     = Math.random() * 100;
 
     el.style.fontSize = size + 'px';
     el.style.left = left + 'vw';
