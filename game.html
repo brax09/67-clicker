@@ -124,10 +124,10 @@ const state = {
   score: 0,
   clickPower: 1,
   upgrades: [
-    { id: 'power',  name: 'Finger Strength', desc: '+1 per click',    baseCost: 10,  costMult: 1.6, level: 0 },
-    { id: 'auto',   name: 'Auto-Clicker',    desc: '+1 per second',   baseCost: 50,  costMult: 1.8, level: 0 },
-    { id: 'mega',   name: 'Mega 67',         desc: '+5 per click',    baseCost: 250, costMult: 2.0, level: 0 },
-    { id: 'turbo',  name: 'Turbo Bot',       desc: '+5 per second',   baseCost: 1000,costMult: 2.2, level: 0 },
+    { id: 'power',  name: 'Finger Strength', desc: '+1 per click',    baseCost: 10,  costMult: 1.25, level: 0 },
+    { id: 'auto',   name: 'Auto-Clicker',    desc: '+1 per second',   baseCost: 50,  costMult: 1.30, level: 0 },
+    { id: 'mega',   name: 'Mega 67',         desc: '+5 per click',    baseCost: 250, costMult: 1.35, level: 0 },
+    { id: 'turbo',  name: 'Turbo Bot',       desc: '+5 per second',   baseCost: 1000,costMult: 1.40, level: 0 },
   ],
   autoPerSec: 0,
 };
@@ -227,20 +227,12 @@ const resetBtn = $('resetBtn');
 resetBtn.addEventListener('click', () => {
   const ok = confirm('Reset all progress? This cannot be undone.');
   if (!ok) return;
-
-  // 1. Wipe the save
   localStorage.removeItem('clicker67');
-
-  // 2. Reset in-memory state (so it works even if save was stale)
   state.score = 0;
   state.clickPower = 1;
   state.autoPerSec = 0;
   for (const u of state.upgrades) u.level = 0;
-
-  // 3. Re-render immediately
   render();
-
-  // 4. Success feedback (page does NOT reload, so it's instant)
   resetBtn.textContent = 'Reset! ✓';
   setTimeout(() => { resetBtn.textContent = 'Reset game'; }, 1200);
 });
