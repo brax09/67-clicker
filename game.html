@@ -17,15 +17,6 @@
     padding: 24px 16px;
     user-select: none;
   }
-  h1 {
-    font-size: clamp(28px, 6vw, 44px);
-    letter-spacing: 2px;
-    background: linear-gradient(90deg, #f9d423, #ff4e50);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    margin-bottom: 6px;
-  }
   .stats {
     text-align: center;
     margin-bottom: 18px;
@@ -35,25 +26,53 @@
   .per-click { font-size: 14px; opacity: 0.8; }
   .per-sec { font-size: 14px; opacity: 0.8; }
 
+  /* Button: no visible box, just the gradient 67 */
   #clickBtn {
-    width: 180px;
-    height: 180px;
-    border-radius: 50%;
+    width: 260px;
+    height: 260px;
     border: none;
     background: none;
-    color: #fff;
-    font-size: 52px;
-    font-weight: 900;
+    padding: 0;
     cursor: pointer;
     transition: transform 0.07s ease;
     margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;   /* never clip the digits */
   }
-  #clickBtn:active { transform: scale(0.92); }
+  #clickBtn:active { transform: scale(0.94); }
   #clickBtn.pulse { animation: pulse 0.25s ease; }
-  @keyframes pulse { 50% { transform: scale(1.08); } }
+  @keyframes pulse { 50% { transform: scale(1.06); } }
 
-  .shop { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 10px; }
+  /* The 67 itself: gradient text, sized to fit the button without clipping */
+  #clickBtn .big67 {
+    font-size: 200px;      /* smaller than the 260px box so nothing is cut */
+    line-height: 1;        /* no extra leading */
+    font-weight: 900;
+    letter-spacing: -4px;  /* pull digits closer so both fit width-wise */
+    background: linear-gradient(90deg, #f9d423, #ff4e50);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    display: block;
+    padding: 0 8px;        /* tiny breathing room inside the box */
+    user-select: none;
+    pointer-events: none;  /* clicks hit the button, not the span */
+  }
+
+  /* Shop: always rendered below the button */
+  .shop {
+    width: 100%;
+    max-width: 460px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+  }
   .shop h2 { font-size: 18px; opacity: 0.85; margin-bottom: 2px; }
+  #upgradeList { display: flex; flex-direction: column; gap: 10px; }
+
   .upgrade {
     display: flex;
     justify-content: space-between;
@@ -100,15 +119,13 @@
 </head>
 <body>
 
-<h1>67 CLICKER</h1>
-
 <div class="stats">
   <div>67s: <span class="score" id="score">0</span></div>
   <div class="per-click">+<span id="perClick">1</span> per click</div>
   <div class="per-sec">+<span id="perSec">0</span> per second</div>
 </div>
 
-<button id="clickBtn">67</button>
+<button id="clickBtn"><span class="big67">67</span></button>
 
 <div class="shop">
   <h2>Upgrades</h2>
@@ -165,6 +182,8 @@ function render() {
   scoreEl.textContent = fmt(state.score);
   perClickEl.textContent = state.clickPower;
   perSecEl.textContent = state.autoPerSec;
+
+  // Rebuild upgrade list every frame so affordability + levels stay in sync
   listEl.innerHTML = '';
   for (const u of state.upgrades) {
     const cost = costOf(u);
@@ -180,6 +199,7 @@ function render() {
     div.onclick = () => buy(u);
     listEl.appendChild(div);
   }
+
   save();
 }
 
