@@ -14,221 +14,64 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     padding: 24px 16px;
     user-select: none;
+    text-align: center;
   }
   h1 {
-    font-size: clamp(28px, 6vw, 44px);
-    letter-spacing: 2px;
+    font-size: clamp(44px, 12vw, 96px);
+    letter-spacing: 4px;
     background: linear-gradient(90deg, #f9d423, #ff4e50);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    margin-bottom: 6px;
+    margin-bottom: 12px;
+    animation: glow 2.5s ease-in-out infinite;
   }
-  .stats {
-    text-align: center;
-    margin-bottom: 18px;
-    line-height: 1.6;
+  @keyframes glow {
+    0%, 100% { filter: drop-shadow(0 0 8px rgba(249, 212, 35, 0.3)); }
+    50%      { filter: drop-shadow(0 0 24px rgba(249, 212, 35, 0.7)); }
   }
-  .score { font-size: 30px; font-weight: 800; color: #f9d423; }
-  .per-click { font-size: 14px; opacity: 0.8; }
-
-  #clickBtn {
-    width: 180px;
-    height: 180px;
-    border-radius: 50%;
-    border: 4px solid #f9d423;
-    background: radial-gradient(circle at 35% 30%, #ff6b6b, #c0392b 70%);
+  .tagline {
+    font-size: 15px;
+    opacity: 0.65;
+    letter-spacing: 1px;
+    margin-bottom: 48px;
+  }
+  #startBtn {
+    padding: 18px 64px;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 2px;
     color: #fff;
-    font-size: 52px;
-    font-weight: 900;
+    background: radial-gradient(circle at 35% 30%, #ff6b6b, #c0392b 70%);
+    border: 3px solid #f9d423;
+    border-radius: 50px;
     cursor: pointer;
     box-shadow: 0 0 30px rgba(249, 212, 35, 0.35);
-    transition: transform 0.07s ease, box-shadow 0.07s ease;
-    margin-bottom: 28px;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
   }
-  #clickBtn:active { transform: scale(0.92); box-shadow: 0 0 50px rgba(249,212,35,0.7); }
-  #clickBtn.pulse { animation: pulse 0.25s ease; }
-  @keyframes pulse { 50% { transform: scale(1.08); } }
-
-  .shop { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 10px; }
-  .shop h2 { font-size: 18px; opacity: 0.85; margin-bottom: 2px; }
-  .upgrade {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 12px;
-    padding: 12px 16px;
-    cursor: pointer;
-    transition: background 0.15s;
+  #startBtn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 50px rgba(249, 212, 35, 0.7);
   }
-  .upgrade:hover:not(.locked) { background: rgba(255,255,255,0.15); }
-  .upgrade.locked { opacity: 0.45; cursor: not-allowed; }
-  .upgrade .info { text-align: left; }
-  .upgrade .name { font-weight: 700; }
-  .upgrade .desc { font-size: 12px; opacity: 0.7; }
-  .upgrade .cost { color: #f9d423; font-weight: 700; white-space: nowrap; }
-
-  .reset {
-    margin-top: 20px;
-    background: none;
-    border: 1px solid rgba(255,255,255,0.3);
-    color: rgba(255,255,255,0.6);
-    padding: 6px 14px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 12px;
-  }
-  .reset:hover { color: #fff; border-color: #fff; }
-
-  .float {
+  #startBtn:active { transform: scale(0.96); }
+  .footer {
     position: fixed;
-    pointer-events: none;
-    font-weight: 900;
-    color: #f9d423;
-    font-size: 24px;
-    animation: floatUp 0.8s ease-out forwards;
-    z-index: 999;
-  }
-  @keyframes floatUp {
-    to { transform: translateY(-80px); opacity: 0; }
+    bottom: 16px;
+    font-size: 12px;
+    opacity: 0.4;
   }
 </style>
 </head>
 <body>
 
 <h1>67 CLICKER</h1>
+<p class="tagline">CLICK. UPGRADE. DOMINATE.</p>
+<button id="startBtn" onclick="location.href='game.html'">START</button>
 
-<div class="stats">
-  <div>67s: <span class="score" id="score">0</span></div>
-  <div class="per-click">+<span id="perClick">1</span> per click</div>
-</div>
+<div class="footer">Made with GitHub Pages</div>
 
-<button id="clickBtn">67</button>
-
-<div class="shop">
-  <h2>Upgrades</h2>
-  <div id="upgradeList"></div>
-</div>
-
-<button class="reset" id="resetBtn">Reset game</button>
-
-<script>
-// ---- Game state ----
-const state = {
-  score: 0,
-  clickPower: 1,
-  upgrades: [
-    { id: 'power',  name: 'Finger Strength', desc: '+1 per click',    baseCost: 10,  costMult: 1.6, level: 0 },
-    { id: 'auto',   name: 'Auto-Clicker',    desc: '+1 per second',   baseCost: 50,  costMult: 1.8, level: 0 },
-    { id: 'mega',   name: 'Mega 67',         desc: '+5 per click',    baseCost: 250, costMult: 2.0, level: 0 },
-    { id: 'turbo',  name: 'Turbo Bot',       desc: '+5 per second',   baseCost: 1000,costMult: 2.2, level: 0 },
-  ],
-  autoPerSec: 0,
-};
-
-// ---- Load saved game ----
-const saved = localStorage.getItem('clicker67');
-if (saved) {
-  try {
-    const data = JSON.parse(saved);
-    Object.assign(state, data);
-  } catch (e) { console.warn('Save corrupted, starting fresh'); }
-}
-
-// ---- Helpers ----
-const $ = (id) => document.getElementById(id);
-const scoreEl = $('score');
-const perClickEl = $('perClick');
-const listEl = $('upgradeList');
-const clickBtn = $('clickBtn');
-
-const costOf = (u) => Math.floor(u.baseCost * Math.pow(u.costMult, u.level));
-const fmt = (n) => n >= 1e6 ? (n/1e6).toFixed(2)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'k' : Math.floor(n);
-
-function recalc() {
-  // Derived stats
-  state.clickPower = 1
-    + state.upgrades.find(u => u.id === 'power').level * 1
-    + state.upgrades.find(u => u.id === 'mega').level * 5;
-  state.autoPerSec =
-      state.upgrades.find(u => u.id === 'auto').level * 1
-    + state.upgrades.find(u => u.id === 'turbo').level * 5;
-}
-
-function render() {
-  recalc();
-  scoreEl.textContent = fmt(state.score);
-  perClickEl.textContent = state.clickPower;
-  listEl.innerHTML = '';
-  for (const u of state.upgrades) {
-    const cost = costOf(u);
-    const affordable = state.score >= cost;
-    const div = document.createElement('div');
-    div.className = 'upgrade' + (affordable ? '' : ' locked');
-    div.innerHTML = `
-      <div class="info">
-        <div class="name">${u.name} <span style="opacity:.6">Lv.${u.level}</span></div>
-        <div class="desc">${u.desc}</div>
-      </div>
-      <div class="cost">${fmt(cost)} 67s</div>`;
-    div.onclick = () => buy(u);
-    listEl.appendChild(div);
-  }
-  save();
-}
-
-function buy(u) {
-  const cost = costOf(u);
-  if (state.score < cost) return;
-  state.score -= cost;
-  u.level++;
-  render();
-}
-
-function save() {
-  localStorage.setItem('clicker67', JSON.stringify(state));
-}
-
-// ---- Clicking ----
-clickBtn.addEventListener('click', (e) => {
-  state.score += state.clickPower;
-  clickBtn.classList.remove('pulse');
-  void clickBtn.offsetWidth; // restart animation
-  clickBtn.classList.add('pulse');
-
-  // Floating "+N"
-  const f = document.createElement('div');
-  f.className = 'float';
-  f.textContent = '+' + state.clickPower;
-  f.style.left = (e.clientX - 20) + 'px';
-  f.style.top  = (e.clientY - 20) + 'px';
-  document.body.appendChild(f);
-  setTimeout(() => f.remove(), 800);
-
-  render();
-});
-
-// ---- Auto income ----
-setInterval(() => {
-  if (state.autoPerSec > 0) {
-    state.score += state.autoPerSec;
-    render();
-  }
-}, 1000);
-
-// ---- Reset ----
-$('resetBtn').addEventListener('click', () => {
-  if (confirm('Reset all progress?')) {
-    localStorage.removeItem('clicker67');
-    location.reload();
-  }
-});
-
-render();
-</script>
 </body>
 </html>
