@@ -22,7 +22,7 @@
     position: relative;
   }
 
-  /* Scattered "67" background layer */
+  /* Falling "67" background layer */
   #bg67 {
     position: fixed;
     inset: 0;
@@ -32,29 +32,37 @@
   }
   .bg67-item {
     position: absolute;
+    top: -10vh;
     font-weight: 900;
     color: #f9d423;
     opacity: 0.5;
     white-space: nowrap;
     user-select: none;
+    will-change: transform;
   }
 
-  /* Foreground content sits above the scattered 67s */
+  /* Rippling title */
   h1 {
     position: relative;
     z-index: 1;
     font-size: clamp(44px, 12vw, 96px);
     letter-spacing: 4px;
+    margin-bottom: 48px;
+    display: inline-block;
+  }
+  /* Each letter gets its own gradient + ripple so the wave looks smooth */
+  h1 .char {
+    display: inline-block;
     background: linear-gradient(90deg, #f9d423, #ff4e50);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    margin-bottom: 48px;
-    animation: glow 2.5s ease-in-out infinite;
+    animation: ripple 1.8s ease-in-out infinite;
+    will-change: transform;
   }
-  @keyframes glow {
-    0%, 100% { filter: drop-shadow(0 0 8px rgba(249, 212, 35, 0.3)); }
-    50%      { filter: drop-shadow(0 0 24px rgba(249, 212, 35, 0.7)); }
+  @keyframes ripple {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50%      { transform: translateY(-10px) scale(1.06); }
   }
 
   #startBtn {
@@ -81,34 +89,67 @@
 </head>
 <body>
 
-<!-- Scattered 67 background (filled by script) -->
+<!-- Falling 67 background (filled by script) -->
 <div id="bg67" aria-hidden="true"></div>
 
-<h1>67 CLICKER</h1>
+<h1 id="title">67 CLICKER</h1>
 <button id="startBtn" onclick="location.href='game.html'">START</button>
 
 <script>
-  // Generate randomly oriented, randomly sized "67"s across the background
-  (function scatter67() {
-    const layer = document.getElementById('bg67');
-    const count = 60; // 1.5x the previous 40
+// ---- 1. Wrap each title character in a span so it can ripple individually ----
+(function splitTitle() {
+  const h1 = document.getElementById('title');
+  const text = h1.textContent;
+  h1.textContent = '';
+  [...text].forEach((ch, i) => {
+    const span = document.createElement('span');
+    span.className = 'char';
+    span.textContent = ch === ' ' ? '\u00A0' : ch; // keep spaces visible
+    // Stagger the animation so the ripple travels across the word
+    span.style.animationDelay = (i * 0.09) + 's';
+    h1.appendChild(span);
+  });
+})();
 
-    for (let i = 0; i < count; i++) {
-      const el = document.createElement('div');
-      el.className = 'bg67-item';
-      el.textContent = '67';
+// ---- 2. Falling 67s with varied speed + slight spin ----
+(function falling67() {
+  const layer = document.getElementById('bg67');
+  const count = 60; // matches the 1.5x density from before
 
-      const size = 18 + Math.random() * 60;          // 18px – 78px
-      const rot  = Math.random() * 360;               // full 0–360° rotation
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'bg67-item';
+    el.textContent = '67';
 
-      el.style.fontSize = size + 'px';
-      el.style.left = (Math.random() * 100) + 'vw';
-      el.style.top  = (Math.random() * 100) + 'vh';
-      el.style.transform = `translate(-50%, -50%) rotate(${rot}deg)`;
+    const size     = 18 + Math.random() * 60;      // 18–78px
+    const duration = 6 + Math.random() * 14;       // 6–20s to fall (faster/slower)
+    const delay    = -Math.random() * duration;    // negative delay = already mid-fall on load
+    const drift    = (Math.random() - 0.5) * 120;  // horizontal drift in px
+    const startRot = Math.random() * 360;          // starting angle
+    const spin     = (Math.random() - 0.5) * 360;  // total rotation over the fall
+    const left     = Math.random() * 100;          // start position across the screen
 
-      layer.appendChild(el);
-    }
-  })();
+    el.style.fontSize = size + 'px';
+    el.style.left = left + 'vw';
+    el.style.opacity = 0.5;
+
+    // Use a CSS custom animation per element so each has its own fall path
+    el.animate(
+      [
+        { transform: `translate(0, -10vh) rotate(${startRot}deg)` },
+        { transform: `translate(${drift}px, 110vh) rotate(${startRot + spin}deg)` }
+      ],
+      {
+        duration: duration * 1000,
+        delay: delay * 1000,
+        iterations: Infinity,
+        easing: 'linear'
+      }
+    );
+
+    layer.appendChild(el);
+  }
+})();
 </script>
 
 </body>
