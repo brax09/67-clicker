@@ -2,22 +2,30 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>67 Clicker · ripple & gradient</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%;
+      overflow-x: hidden;
+    }
 
     body {
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       background: linear-gradient(160deg, #1a1a2e, #16213e 60%, #0f3460);
       color: #fff;
       min-height: 100vh;
+      min-height: 100dvh;          /* dynamic viewport height on mobile */
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 24px 16px;
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
       user-select: none;
+      -webkit-user-select: none;
       text-align: center;
       overflow: hidden;
       position: relative;
@@ -42,14 +50,16 @@
       will-change: transform;
     }
 
-    /* title container */
+    /* title container — scales to device width */
     h1 {
       position: relative;
       z-index: 1;
-      font-size: clamp(44px, 12vw, 96px);
+      font-size: clamp(36px, 12vw, 96px);
       letter-spacing: 4px;
-      margin-bottom: 48px;
+      margin-bottom: clamp(28px, 8vw, 48px);
       display: inline-block;
+      max-width: 100%;
+      line-height: 1.15;
     }
 
     /* each letter ripples individually, with a pause between waves */
@@ -59,8 +69,7 @@
       will-change: transform;
     }
 
-    /* The ripple: bounce up quickly, come back down, then rest for the remainder.
-       The active portion is ~25% of the cycle, so there's a clear gap between ripples. */
+    /* ripple: bounce up quickly, return, then rest for the remainder */
     @keyframes rippleChar {
       0%   { transform: translateY(0) scale(1); }
       12%  { transform: translateY(-10px) scale(1.06); }
@@ -71,8 +80,8 @@
     #startBtn {
       position: relative;
       z-index: 1;
-      padding: 18px 64px;
-      font-size: 22px;
+      padding: clamp(14px, 4vw, 18px) clamp(36px, 12vw, 64px);
+      font-size: clamp(18px, 5vw, 22px);
       font-weight: 800;
       letter-spacing: 2px;
       color: #fff;
@@ -82,12 +91,20 @@
       cursor: pointer;
       box-shadow: 0 0 30px rgba(249, 212, 35, 0.35);
       transition: transform 0.1s ease, box-shadow 0.1s ease;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      max-width: 90vw;
     }
     #startBtn:hover {
       transform: scale(1.05);
       box-shadow: 0 0 50px rgba(249, 212, 35, 0.7);
     }
     #startBtn:active { transform: scale(0.96); }
+
+    /* respect reduced motion preferences */
+    @media (prefers-reduced-motion: reduce) {
+      h1 .char { animation: none; }
+    }
   </style>
 </head>
 <body>
@@ -98,7 +115,7 @@
 
   <script>
     (function() {
-      // ----- 1. SPLIT TITLE INTO LETTERS + SHARED CONTINUOUS GRADIENT -----
+      // ----- 1. SPLIT TITLE INTO LETTERS -----
       const h1 = document.getElementById('title');
       const text = h1.textContent;
       h1.textContent = '';
@@ -112,31 +129,48 @@
         spans.push(span);
       }
 
-      requestAnimationFrame(() => {
-        const h1Rect = h1.getBoundingClientRect();
-        const totalWidth = h1Rect.width;
+      // ----- 2. APPLY SHARED CONTINUOUS GRADIENT (after fonts are ready) -----
+      function applyGradient() {
+        requestAnimationFrame(() => {
+          const h1Rect = h1.getBoundingClientRect();
+          const totalWidth = h1Rect.width;
+          if (totalWidth === 0) return;
 
-        spans.forEach((span, index) => {
-          const spanRect = span.getBoundingClientRect();
-          const leftOffset = spanRect.left - h1Rect.left;
+          spans.forEach((span, index) => {
+            const spanRect = span.getBoundingClientRect();
+            const leftOffset = spanRect.left - h1Rect.left;
 
-          span.style.backgroundImage = 'linear-gradient(90deg, #f9d423, #ff4e50)';
-          span.style.backgroundSize = `${totalWidth}px 100%`;
-          span.style.backgroundPosition = `-${leftOffset}px 0`;
-          span.style.webkitBackgroundClip = 'text';
-          span.style.backgroundClip = 'text';
-          span.style.color = 'transparent';
+            span.style.backgroundImage = 'linear-gradient(90deg, #f9d423, #ff4e50)';
+            span.style.backgroundSize = `${totalWidth}px 100%`;
+            span.style.backgroundPosition = `-${leftOffset}px 0`;
+            span.style.webkitBackgroundClip = 'text';
+            span.style.backgroundClip = 'text';
+            span.style.color = 'transparent';
 
-          // Stagger so the ripple travels left → right.
-          // Longer delay (0.12s) makes the wave clearly separate.
-          span.style.animationDelay = `${index * 0.12}s`;
+            // staggered wave, left → right
+            span.style.animationDelay = `${index * 0.12}s`;
+          });
         });
+      }
+
+      // Wait for fonts so measurements are accurate; fall back gracefully.
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(applyGradient).catch(applyGradient);
+      } else {
+        applyGradient();
+      }
+
+      // Re-apply on resize/orientation change so the gradient stays aligned.
+      let resizeTimer;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(applyGradient, 120);
       });
 
-      // ----- 2. FALLING 67s -----
+      // ----- 3. FALLING 67s (fewer on small screens for performance) -----
       (function falling67() {
         const layer = document.getElementById('bg67');
-        const count = 60;
+        const count = window.innerWidth < 600 ? 26 : 60;
 
         for (let i = 0; i < count; i++) {
           const el = document.createElement('div');
