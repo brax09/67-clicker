@@ -1,184 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>67 Clicker</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: linear-gradient(160deg, #1a1a2e, #16213e 60%, #0f3460);
-    color: #fff;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 24px 16px;
-    user-select: none;
-    text-align: center;
-    overflow: hidden;
-    position: relative;
-  }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>67 Clicker · ripple & gradient</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* Falling "67" background layer */
-  #bg67 {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    overflow: hidden;
-  }
-  .bg67-item {
-    position: absolute;
-    top: -10vh;
-    font-weight: 900;
-    color: #f9d423;
-    opacity: 0.5;
-    white-space: nowrap;
-    user-select: none;
-    will-change: transform;
-  }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(160deg, #1a1a2e, #16213e 60%, #0f3460);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      user-select: none;
+      text-align: center;
+      overflow: hidden;
+      position: relative;
+    }
 
-  /* Title wrapper: holds the ONE gradient that spans the whole word */
-  h1 {
-    position: relative;
-    z-index: 1;
-    font-size: clamp(44px, 12vw, 96px);
-    letter-spacing: 4px;
-    margin-bottom: 48px;
-    display: inline-block;
-  }
+    /* falling background layer */
+    #bg67 {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .bg67-item {
+      position: absolute;
+      top: -10vh;
+      font-weight: 900;
+      color: #f9d423;
+      opacity: 0.5;
+      white-space: nowrap;
+      user-select: none;
+      will-change: transform;
+    }
 
-  /* Each letter ripples individually (wave travels left→right) */
-  h1 .char {
-    display: inline-block;
-    animation: rippleChar 1.8s ease-in-out infinite;
-    will-change: transform;
-    /* Gradient is applied here but sized to the FULL title via background-size
-       trick below, so the color flows across the whole word, not per letter */
-    background: linear-gradient(90deg, #f9d423, #ff4e50);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
+    /* title container — holds the single continuous gradient */
+    h1 {
+      position: relative;
+      z-index: 1;
+      font-size: clamp(44px, 12vw, 96px);
+      letter-spacing: 4px;
+      margin-bottom: 48px;
+      display: inline-block;
+    }
 
-  @keyframes rippleChar {
-    0%, 100% { transform: translateY(0) scale(1); }
-    50%      { transform: translateY(-10px) scale(1.06); }
-  }
+    /* every letter ripples individually, but gradient is applied via the parent */
+    h1 .char {
+      display: inline-block;
+      animation: rippleChar 1.8s ease-in-out infinite;
+      will-change: transform;
+      /* the gradient is NOT set here — it's inherited from the h1's background-clip trick
+         but we set background on each span using the parent's gradient reference */
+    }
 
-  #startBtn {
-    position: relative;
-    z-index: 1;
-    padding: 18px 64px;
-    font-size: 22px;
-    font-weight: 800;
-    letter-spacing: 2px;
-    color: #fff;
-    background: radial-gradient(circle at 35% 30%, #ff6b6b, #c0392b 70%);
-    border: 3px solid #f9d423;
-    border-radius: 50px;
-    cursor: pointer;
-    box-shadow: 0 0 30px rgba(249, 212, 35, 0.35);
-    transition: transform 0.1s ease, box-shadow 0.1s ease;
-  }
-  #startBtn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 0 50px rgba(249, 212, 35, 0.7);
-  }
-  #startBtn:active { transform: scale(0.96); }
-</style>
+    /* keyframes for the wave */
+    @keyframes rippleChar {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50%      { transform: translateY(-10px) scale(1.06); }
+    }
+
+    #startBtn {
+      position: relative;
+      z-index: 1;
+      padding: 18px 64px;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: #fff;
+      background: radial-gradient(circle at 35% 30%, #ff6b6b, #c0392b 70%);
+      border: 3px solid #f9d423;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 0 30px rgba(249, 212, 35, 0.35);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+    #startBtn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 50px rgba(249, 212, 35, 0.7);
+    }
+    #startBtn:active { transform: scale(0.96); }
+  </style>
 </head>
 <body>
 
-<!-- Falling 67 background (filled by script) -->
-<div id="bg67" aria-hidden="true"></div>
+  <div id="bg67" aria-hidden="true"></div>
+  <h1 id="title">67 CLICKER</h1>
+  <button id="startBtn" onclick="location.href='game.html'">START</button>
 
-<h1 id="title">67 CLICKER</h1>
-<button id="startBtn" onclick="location.href='game.html'">START</button>
-
-<script>
-// ---- Split title into per-letter spans, and give each one a gradient that
-//      is sized/positioned to the WHOLE title so the gradient flows across
-//      all letters as a single continuous gradient (not repeated per letter) ----
-(function splitTitle() {
-  const h1 = document.getElementById('title');
-  const text = h1.textContent;
-  h1.textContent = '';
-
-  const spans = [];
-  [...text].forEach((ch) => {
-    const span = document.createElement('span');
-    span.className = 'char';
-    span.textContent = ch === ' ' ? '\u00A0' : ch;
-    h1.appendChild(span);
-    spans.push(span);
-  });
-
-  // After layout, measure the full title width and apply a shared gradient
-  // background to each letter, offset so together they form one gradient.
-  requestAnimationFrame(() => {
-    const totalWidth = h1.getBoundingClientRect().width;
-    spans.forEach((span) => {
-      const r = span.getBoundingClientRect();
-      const left = r.left - h1.getBoundingClientRect().left;
-
-      // Make the gradient span the full title width, anchored so this
-      // letter shows the correct slice of the master gradient.
-      span.style.backgroundImage = 'linear-gradient(90deg, #f9d423, #ff4e50)';
-      span.style.backgroundSize = totalWidth + 'px 100%';
-      span.style.backgroundPosition = (-left) + 'px 0';
-      span.style.webkitBackgroundClip = 'text';
-      span.style.backgroundClip = 'text';
-      span.style.color = 'transparent';
-
-      // Stagger so the ripple is a traveling wave
-      span.style.animationDelay = (spans.indexOf(span) * 0.09) + 's';
-    });
-  });
-})();
-
-// ---- Falling 67s with varied speed + slight spin ----
-(function falling67() {
-  const layer = document.getElementById('bg67');
-  const count = 60;
-
-  for (let i = 0; i < count; i++) {
-    const el = document.createElement('div');
-    el.className = 'bg67-item';
-    el.textContent = '67';
-
-    const size     = 18 + Math.random() * 60;
-    const duration = 6 + Math.random() * 14;
-    const delay    = -Math.random() * duration;
-    const drift    = (Math.random() - 0.5) * 120;
-    const startRot = Math.random() * 360;
-    const spin     = (Math.random() - 0.5) * 360;
-    const left     = Math.random() * 100;
-
-    el.style.fontSize = size + 'px';
-    el.style.left = left + 'vw';
-    el.style.opacity = 0.5;
-
-    el.animate(
-      [
-        { transform: `translate(0, -10vh) rotate(${startRot}deg)` },
-        { transform: `translate(${drift}px, 110vh) rotate(${startRot + spin}deg)` }
-      ],
-      {
-        duration: duration * 1000,
-        delay: delay * 1000,
-        iterations: Infinity,
-        easing: 'linear'
+  <script>
+    (function() {
+      // ----- 1. SPLIT TITLE INTO LETTERS + APPLY SHARED GRADIENT (continuous) -----
+      const h1 = document.getElementById('title');
+      const text = h1.textContent;
+      h1.textContent = '';
+      
+      const spans = [];
+      for (const ch of text) {
+        const span = document.createElement('span');
+        span.className = 'char';
+        span.textContent = ch === ' ' ? '\u00A0' : ch;
+        h1.appendChild(span);
+        spans.push(span);
       }
-    );
 
-    layer.appendChild(el);
-  }
-})();
-</script>
+      // After layout, measure and set gradient per letter so it flows across the whole word.
+      // We use requestAnimationFrame to make sure widths are correct.
+      requestAnimationFrame(() => {
+        // Get total width of the h1 (which now contains the spans)
+        const h1Rect = h1.getBoundingClientRect();
+        const totalWidth = h1Rect.width;
+
+        spans.forEach((span, index) => {
+          const spanRect = span.getBoundingClientRect();
+          // Compute the offset of this letter relative to the left edge of h1
+          const leftOffset = spanRect.left - h1Rect.left;
+
+          // Create a single linear gradient that spans the full width of the h1.
+          // Each letter gets the same gradient, but we shift the background-position
+          // so that the visible part is the slice corresponding to that letter's position.
+          span.style.backgroundImage = 'linear-gradient(90deg, #f9d423, #ff4e50)';
+          span.style.backgroundSize = `${totalWidth}px 100%`;
+          span.style.backgroundPosition = `-${leftOffset}px 0`; // negative moves gradient left
+          span.style.webkitBackgroundClip = 'text';
+          span.style.backgroundClip = 'text';
+          span.style.color = 'transparent';
+
+          // Stagger the animation delay to create a travelling wave (left to right)
+          span.style.animationDelay = `${index * 0.09}s`;
+        });
+      });
+
+      // ----- 2. FALLING 67s (background) -----
+      (function falling67() {
+        const layer = document.getElementById('bg67');
+        const count = 60;
+
+        for (let i = 0; i < count; i++) {
+          const el = document.createElement('div');
+          el.className = 'bg67-item';
+          el.textContent = '67';
+
+          const size     = 18 + Math.random() * 60;
+          const duration = 6 + Math.random() * 14;
+          const delay    = -Math.random() * duration;
+          const drift    = (Math.random() - 0.5) * 120;
+          const startRot = Math.random() * 360;
+          const spin     = (Math.random() - 0.5) * 360;
+          const left     = Math.random() * 100;
+
+          el.style.fontSize = size + 'px';
+          el.style.left = left + 'vw';
+          el.style.opacity = 0.5;
+
+          el.animate(
+            [
+              { transform: `translate(0, -10vh) rotate(${startRot}deg)` },
+              { transform: `translate(${drift}px, 110vh) rotate(${startRot + spin}deg)` }
+            ],
+            {
+              duration: duration * 1000,
+              delay: delay * 1000,
+              iterations: Infinity,
+              easing: 'linear'
+            }
+          );
+
+          layer.appendChild(el);
+        }
+      })();
+    })();
+  </script>
 
 </body>
 </html>
