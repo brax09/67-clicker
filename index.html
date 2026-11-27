@@ -17,7 +17,7 @@
       background: linear-gradient(160deg, #1a1a2e, #16213e 60%, #0f3460);
       color: #fff;
       min-height: 100vh;
-      min-height: 100dvh;          /* dynamic viewport height on mobile */
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -101,7 +101,7 @@
     }
     #startBtn:active { transform: scale(0.96); }
 
-    /* respect reduced motion preferences */
+    /* respect reduced motion preferences (ripple) */
     @media (prefers-reduced-motion: reduce) {
       h1 .char { animation: none; }
     }
@@ -129,7 +129,11 @@
         spans.push(span);
       }
 
-      // ----- 2. APPLY SHARED CONTINUOUS GRADIENT (after fonts are ready) -----
+      // ----- 2. APPLY SHARED CONTINUOUS GRADIENT -----
+      // Reassigns background slices and (only the first time) animation delays,
+      // so a resize doesn't restart the ripple wave (fix #2).
+      let gradientApplied = false;
+
       function applyGradient() {
         requestAnimationFrame(() => {
           const h1Rect = h1.getBoundingClientRect();
@@ -147,18 +151,32 @@
             span.style.backgroundClip = 'text';
             span.style.color = 'transparent';
 
-            // staggered wave, left → right
-            span.style.animationDelay = `${index * 0.12}s`;
+            // Only set the stagger delay once, so resize/orientation changes
+            // don't restart the wave (fix #2).
+            if (!gradientApplied) {
+              span.style.animationDelay = `${index * 0.12}s`;
+            }
           });
+
+          gradientApplied = true;
         });
       }
 
-      // Wait for fonts so measurements are accurate; fall back gracefully.
-      if (document.fonts && document.fonts.ready) {
-        document.fonts.ready.then(applyGradient).catch(applyGradient);
-      } else {
+      // ----- 1. FONT-READY SAFETY NET (fix #1) -----
+      // Apply as soon as fonts are ready, but guarantee the gradient is applied
+      // even if document.fonts.ready never resolves (some in-app browsers).
+      let applied = false;
+      function ensureGradient() {
+        if (applied) return;
+        applied = true;
         applyGradient();
       }
+
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(ensureGradient).catch(ensureGradient);
+      }
+      // Fallback: apply regardless after a short delay if fonts never resolve.
+      setTimeout(ensureGradient, 1500);
 
       // Re-apply on resize/orientation change so the gradient stays aligned.
       let resizeTimer;
@@ -167,10 +185,21 @@
         resizeTimer = setTimeout(applyGradient, 120);
       });
 
-      // ----- 3. FALLING 67s (fewer on small screens for performance) -----
+      // ----- 3 & 4. FALLING 67s (reduced-motion + WAAPI guard) -----
       (function falling67() {
+        // Respect reduced-motion: skip the falling background entirely (fix #3).
+        const prefersReduced = window.matchMedia &&
+          window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (prefersReduced) return;
+
+        // Guard: if Web Animations API is unavailable, skip the background
+        // instead of throwing and leaving a console error (fix #4).
+        const testEl = document.createElement('div');
+        if (typeof testEl.animate !== 'function') return;
+
         const layer = document.getElementById('bg67');
         const count = window.innerWidth < 600 ? 26 : 60;
+        const anims = [];
 
         for (let i = 0; i < count; i++) {
           const el = document.createElement('div');
@@ -189,7 +218,7 @@
           el.style.left = left + 'vw';
           el.style.opacity = 0.5;
 
-          el.animate(
+          const anim = el.animate(
             [
               { transform: `translate(0, -10vh) rotate(${startRot}deg)` },
               { transform: `translate(${drift}px, 110vh) rotate(${startRot + spin}deg)` }
@@ -202,8 +231,19 @@
             }
           );
 
+          anims.push(anim);
           layer.appendChild(el);
         }
+
+        // ----- 5. PAUSE FALLING ANIMATIONS WHEN TAB IS HIDDEN -----
+        // Saves battery/CPU on mobile; resumes seamlessly on return.
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden) {
+            for (const a of anims) a.pause();
+          } else {
+            for (const a of anims) a.play();
+          }
+        });
       })();
     })();
   </script>
