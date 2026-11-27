@@ -103,8 +103,15 @@
   .upgrade .desc { font-size: 12px; opacity: 0.7; }
   .upgrade .cost { color: #f9d423; font-weight: 700; white-space: nowrap; }
 
-  .reset {
+  .buttons-row {
+    display: flex;
+    gap: 10px;
     margin-top: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .reset, .ach-btn {
     background: none;
     border: 1px solid rgba(255,255,255,0.3);
     color: rgba(255,255,255,0.6);
@@ -115,7 +122,18 @@
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
-  .reset:hover { color: #fff; border-color: #fff; }
+  .reset:hover, .ach-btn:hover { color: #fff; border-color: #fff; }
+  .ach-btn { position: relative; }
+  .ach-btn .badge-count {
+    display: inline-block;
+    background: #f9d423;
+    color: #1a1a2e;
+    font-weight: 800;
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 8px;
+    margin-left: 6px;
+  }
 
   .float {
     position: fixed;
@@ -130,7 +148,7 @@
     to { transform: translateY(-80px); opacity: 0; }
   }
 
-  /* Custom reset modal (replaces blocking confirm()) */
+  /* ---------- Reset modal ---------- */
   #modalBackdrop {
     position: fixed;
     inset: 0;
@@ -170,9 +188,196 @@
   .modal .cancel:hover { background: rgba(255,255,255,0.16); }
   .modal .confirm:hover { background: #d64535; }
 
+  /* ---------- Achievements panel / slide-over ---------- */
+  #achBackdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1100;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+  }
+  #achBackdrop.open { opacity: 1; visibility: visible; }
+
+  #achPanel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 380px;
+    max-width: 92vw;
+    background: linear-gradient(160deg, #1f2544, #16213e);
+    border-left: 1px solid rgba(255,255,255,0.15);
+    box-shadow: -10px 0 40px rgba(0,0,0,0.5);
+    z-index: 1200;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  }
+  #achPanel.open { transform: translateX(0); }
+
+  /* On desktop, make it look like a docked side panel (no backdrop dimming,
+     slight gap from the edge, rounded corner). */
+  @media (min-width: 900px) {
+    #achBackdrop { background: rgba(0,0,0,0.25); }
+    #achPanel {
+      top: 12px;
+      bottom: 12px;
+      right: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+  }
+
+  .ach-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .ach-header h2 {
+    font-size: 20px;
+    font-weight: 800;
+    background: linear-gradient(90deg, #f9d423, #ff4e50);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .ach-close {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    flex-shrink: 0;
+  }
+  .ach-close:hover { border-color: #fff; }
+
+  .ach-summary {
+    font-size: 13px;
+    opacity: 0.85;
+    margin-bottom: 8px;
+  }
+  .ach-summary .count { color: #f9d423; font-weight: 800; font-size: 16px; }
+
+  .ach-progress {
+    height: 6px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    flex-shrink: 0;
+  }
+  .ach-progress .fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #f9d423, #ff4e50);
+    transition: width 0.4s ease;
+  }
+
+  #achList {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-right: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ach {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 10px 12px;
+    transition: background 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+  }
+  .ach.unlocked {
+    border-color: rgba(249,212,35,0.5);
+    background: rgba(249,212,35,0.08);
+  }
+  .ach .icon {
+    font-size: 22px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.08);
+    flex-shrink: 0;
+  }
+  .ach.unlocked .icon { background: rgba(249,212,35,0.18); }
+  .ach.locked .icon { filter: grayscale(1); opacity: 0.5; }
+  .ach .info { flex: 1; min-width: 0; }
+  .ach .name {
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .ach .badge {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: #1a1a2e;
+    background: #f9d423;
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .ach .desc { font-size: 11px; opacity: 0.7; margin-top: 1px; }
+  .ach .status {
+    font-size: 14px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.3);
+    flex-shrink: 0;
+  }
+  .ach.unlocked .status { color: #f9d423; }
+
+  /* achievement unlock toast */
+  .ach-toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    transform: translateX(-50%) translateY(120%);
+    background: linear-gradient(90deg, #f9d423, #ff4e50);
+    color: #1a1a2e;
+    font-weight: 800;
+    font-size: 14px;
+    padding: 12px 22px;
+    border-radius: 50px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    z-index: 2000;
+    transition: transform 0.35s ease;
+    max-width: 90vw;
+    text-align: center;
+    pointer-events: none;
+  }
+  .ach-toast.show { transform: translateX(-50%) translateY(0); }
+
   @media (prefers-reduced-motion: reduce) {
     #clickBtn.pulse { animation: none; }
     .float { animation-duration: 0.01s; }
+    #achPanel { transition: none; }
+    #achBackdrop { transition: none; }
+    .ach-toast { transition: none; }
+    .ach-progress .fill { transition: none; }
   }
 </style>
 </head>
@@ -191,9 +396,12 @@
   <div id="upgradeList"></div>
 </div>
 
-<button class="reset" id="resetBtn">Reset game</button>
+<div class="buttons-row">
+  <button class="ach-btn" id="achBtn">Achievements <span class="badge-count" id="achBadge">0</span></button>
+  <button class="reset" id="resetBtn">Reset game</button>
+</div>
 
-<!-- Custom reset confirmation modal -->
+<!-- Reset confirmation modal -->
 <div id="modalBackdrop" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalText">
     <p id="modalText">Reset all progress? This cannot be undone.</p>
@@ -204,11 +412,29 @@
   </div>
 </div>
 
+<!-- Achievements backdrop + panel -->
+<div id="achBackdrop"></div>
+<aside id="achPanel" aria-hidden="true" aria-label="Achievements">
+  <div class="ach-header">
+    <h2>Achievements</h2>
+    <button class="ach-close" id="achClose" aria-label="Close achievements">×</button>
+  </div>
+  <div class="ach-summary">
+    Unlocked <span class="count" id="achUnlockedCount">0</span> / <span id="achTotalCount">0</span>
+  </div>
+  <div class="ach-progress"><div class="fill" id="achProgressFill"></div></div>
+  <div id="achList"></div>
+</aside>
+
 <script>
-// ---- Game state ----
+// ============================================================
+// GAME STATE
+// ============================================================
 const state = {
   score: 0,
   clickPower: 1,
+  clickCount: 0,
+  hasReset: false,
   upgrades: [
     { id: 'power',  name: 'Finger Strength', desc: '+1 per click',    baseCost: 10,  costMult: 1.12, level: 0 },
     { id: 'auto',   name: 'Auto-Clicker',    desc: '+1 per second',   baseCost: 25,  costMult: 1.15, level: 0 },
@@ -219,80 +445,60 @@ const state = {
   lastTick: Date.now(),
 };
 
-// ---- Safe localStorage helpers (fix #5) ----
+// ---- Safe storage ----
 const STORAGE_KEY = 'clicker67';
+const ACH_KEY = 'clicker67_achievements';
 let storageAvailable = true;
 
 function safeGetItem(key) {
-  try {
-    return localStorage.getItem(key);
-  } catch (e) {
-    storageAvailable = false;
-    console.warn('localStorage unavailable, progress will not save.');
-    return null;
-  }
+  try { return localStorage.getItem(key); }
+  catch (e) { storageAvailable = false; console.warn('localStorage unavailable.'); return null; }
 }
-
 function safeSetItem(key, value) {
   if (!storageAvailable) return false;
-  try {
-    localStorage.setItem(key, value);
-    return true;
-  } catch (e) {
-    storageAvailable = false;
-    console.warn('Could not save progress (storage full or blocked).');
-    return false;
-  }
+  try { localStorage.setItem(key, value); return true; }
+  catch (e) { storageAvailable = false; console.warn('Could not save progress.'); return false; }
 }
-
 function safeRemoveItem(key) {
   if (!storageAvailable) return;
-  try {
-    localStorage.removeItem(key);
-  } catch (e) {
-    // ignore
-  }
+  try { localStorage.removeItem(key); } catch (e) {}
 }
 
-// ---- Load saved game with defensive structural merge (fix #6) ----
+// ---- Load saved game ----
 const saved = safeGetItem(STORAGE_KEY);
 if (saved) {
   try {
     const data = JSON.parse(saved);
     if (data && typeof data === 'object') {
-      // Restore top-level numeric fields only if they are valid finite numbers.
       if (Number.isFinite(data.score) && data.score >= 0) state.score = data.score;
       if (Number.isFinite(data.clickPower) && data.clickPower > 0) state.clickPower = data.clickPower;
       if (Number.isFinite(data.autoPerSec) && data.autoPerSec >= 0) state.autoPerSec = data.autoPerSec;
+      if (Number.isFinite(data.clickCount) && data.clickCount >= 0) state.clickCount = Math.floor(data.clickCount);
+      if (data.hasReset === true) state.hasReset = true;
 
-      // Merge saved upgrade levels/costMult onto the current upgrade definitions
-      // by id, so structural changes between versions can't corrupt the game.
       if (Array.isArray(data.upgrades)) {
+        const balanced = { power: 1.12, auto: 1.15, mega: 1.18, turbo: 1.20 };
         for (const savedUp of data.upgrades) {
           if (!savedUp || typeof savedUp.id !== 'string') continue;
           const target = state.upgrades.find(u => u.id === savedUp.id);
-          if (!target) continue; // upgrade no longer exists — skip safely
+          if (!target) continue;
           if (Number.isFinite(savedUp.level) && savedUp.level >= 0) {
             target.level = Math.floor(savedUp.level);
           }
-          // Apply the balanced costMult for known upgrades (migration from older saves).
-          const balanced = { power: 1.12, auto: 1.15, mega: 1.18, turbo: 1.20 };
           if (balanced[target.id] !== undefined) target.costMult = balanced[target.id];
         }
       }
     }
-    // Reset lastTick so no offline time is awarded on load.
     state.lastTick = Date.now();
-  } catch (e) {
-    console.warn('Save corrupted, starting fresh');
-  }
+  } catch (e) { console.warn('Save corrupted, starting fresh'); }
 }
 
-// Sanitize score in case of corrupted/NaN save (fix #13)
 if (!Number.isFinite(state.score) || state.score < 0) state.score = 0;
 if (!Number.isFinite(state.clickPower) || state.clickPower <= 0) state.clickPower = 1;
 
-// ---- Helpers ----
+// ============================================================
+// HELPERS
+// ============================================================
 const $ = (id) => document.getElementById(id);
 const scoreEl = $('score');
 const perClickEl = $('perClick');
@@ -301,8 +507,6 @@ const listEl = $('upgradeList');
 const clickBtn = $('clickBtn');
 
 const costOf = (u) => Math.floor(u.baseCost * Math.pow(u.costMult, u.level));
-
-// Guard against NaN/Infinity so the display never breaks (fix #13)
 const fmt = (n) => {
   if (!Number.isFinite(n)) return '0';
   if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
@@ -319,7 +523,6 @@ function recalc() {
     + state.upgrades.find(u => u.id === 'turbo').level * 5;
 }
 
-// Full render: rebuilds stats + shop.
 function render() {
   recalc();
   scoreEl.textContent = fmt(state.score);
@@ -332,7 +535,6 @@ function render() {
     const affordable = state.score >= cost;
     const div = document.createElement('div');
     div.className = 'upgrade' + (affordable ? '' : ' locked');
-    // Stamp each row with its id so lock updates never rely on DOM order (fix #1)
     div.dataset.id = u.id;
     div.innerHTML = `
       <div class="info">
@@ -347,10 +549,7 @@ function render() {
   save();
 }
 
-// Lightweight score-only update for the per-second tick.
-function updateScoreDisplay() {
-  scoreEl.textContent = fmt(state.score);
-}
+function updateScoreDisplay() { scoreEl.textContent = fmt(state.score); }
 
 function buy(u) {
   const cost = costOf(u);
@@ -358,12 +557,10 @@ function buy(u) {
   state.score -= cost;
   u.level++;
   render();
+  checkAchievements();
 }
 
-// ---- Throttled save (fix #4) ----
-// Auto income calls render()/updateScoreDisplay() frequently; writing to
-// localStorage every second is expensive. We debounce writes and also flush
-// on important lifecycle events.
+// ---- Throttled save ----
 let saveTimer = null;
 const SAVE_THROTTLE_MS = 5000;
 
@@ -371,26 +568,169 @@ function saveNow() {
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
   safeSetItem(STORAGE_KEY, JSON.stringify(state));
 }
-
 function save() {
-  // If a save is already queued, don't queue another.
   if (saveTimer) return;
   saveTimer = setTimeout(() => {
     saveTimer = null;
     safeSetItem(STORAGE_KEY, JSON.stringify(state));
   }, SAVE_THROTTLE_MS);
 }
-
-// Flush pending saves when leaving / hiding the page.
 window.addEventListener('pagehide', saveNow);
 window.addEventListener('beforeunload', saveNow);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) saveNow();
 });
 
-// ---- Clicking ----
+// ============================================================
+// ACHIEVEMENTS ENGINE
+// ============================================================
+const ACHIEVEMENTS = [
+  { id: 'first_click',   icon: '👆', name: 'First Tap',       desc: 'Click the 67 for the first time.' },
+  { id: 'clicks_100',    icon: '💯', name: 'Century Clicker', desc: 'Click 100 times.' },
+  { id: 'clicks_1000',   icon: '🔥', name: 'Thousand Taps',   desc: 'Click 1,000 times.' },
+  { id: 'score_100',     icon: '✨', name: 'Getting Started', desc: 'Reach 100 67s.' },
+  { id: 'score_1000',    icon: '💎', name: 'Four Figures',    desc: 'Reach 1,000 67s.' },
+  { id: 'score_10000',   icon: '👑', name: '67 Royalty',      desc: 'Reach 10,000 67s.' },
+  { id: 'first_upgrade', icon: '🛒', name: 'First Purchase',  desc: 'Buy your first upgrade.' },
+  { id: 'auto_income',   icon: '⚙️', name: 'Automated',       desc: 'Earn passive income.' },
+  { id: 'all_types',     icon: '🏆', name: 'Full Set',        desc: 'Own at least one of every upgrade type.' },
+  { id: 'click_power_10',icon: '💪', name: 'Strong Finger',   desc: 'Reach +10 per click.' },
+  { id: 'per_sec_10',    icon: '🌊', name: 'Steady Stream',   desc: 'Reach +10 per second.' },
+  { id: 'reset_once',    icon: '🔄', name: 'Fresh Start',     desc: 'Reset the game once.' },
+];
+
+let unlockedAch = {};
+try {
+  const raw = safeGetItem(ACH_KEY);
+  if (raw) unlockedAch = JSON.parse(raw) || {};
+} catch (e) { unlockedAch = {}; }
+
+function saveAchievements() {
+  safeSetItem(ACH_KEY, JSON.stringify(unlockedAch));
+}
+
+// ---- Toast ----
+let toastTimer = null;
+function showAchToast(name) {
+  let toast = document.getElementById('achToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'achToast';
+    toast.className = 'ach-toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = '🏆 Achievement unlocked: ' + name;
+  void toast.offsetWidth;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
+}
+
+// ---- Check + unlock ----
+function checkAchievements() {
+  const newly = [];
+  const unlock = (id) => {
+    if (!unlockedAch[id]) {
+      unlockedAch[id] = true;
+      const def = ACHIEVEMENTS.find(a => a.id === id);
+      if (def) newly.push(def.name);
+    }
+  };
+
+  if ((state.clickCount || 0) >= 1)    unlock('first_click');
+  if ((state.clickCount || 0) >= 100)  unlock('clicks_100');
+  if ((state.clickCount || 0) >= 1000) unlock('clicks_1000');
+  if (state.score >= 100)              unlock('score_100');
+  if (state.score >= 1000)             unlock('score_1000');
+  if (state.score >= 10000)            unlock('score_10000');
+  if (state.upgrades.some(u => u.level > 0)) unlock('first_upgrade');
+  if (state.autoPerSec > 0)            unlock('auto_income');
+  if (state.upgrades.every(u => u.level > 0)) unlock('all_types');
+  if (state.clickPower >= 10)          unlock('click_power_10');
+  if (state.autoPerSec >= 10)          unlock('per_sec_10');
+  if (state.hasReset)                  unlock('reset_once');
+
+  if (newly.length) {
+    saveAchievements();
+    newly.forEach((n, i) => setTimeout(() => showAchToast(n), i * 300));
+    renderAchievements();
+  }
+  updateAchBadge();
+}
+
+// ---- Render achievements list ----
+const achListEl = $('achList');
+const achUnlockedCountEl = $('achUnlockedCount');
+const achTotalCountEl = $('achTotalCount');
+const achProgressFill = $('achProgressFill');
+const achBadge = $('achBadge');
+
+function renderAchievements() {
+  const total = ACHIEVEMENTS.length;
+  let count = 0;
+
+  achListEl.innerHTML = '';
+  for (const a of ACHIEVEMENTS) {
+    const isUnlocked = !!unlockedAch[a.id];
+    if (isUnlocked) count++;
+
+    const div = document.createElement('div');
+    div.className = 'ach ' + (isUnlocked ? 'unlocked' : 'locked');
+    div.innerHTML = `
+      <div class="icon">${a.icon}</div>
+      <div class="info">
+        <div class="name">${a.name}${isUnlocked ? ' <span class="badge">UNLOCKED</span>' : ''}</div>
+        <div class="desc">${a.desc}</div>
+      </div>
+      <div class="status">${isUnlocked ? '✓' : '🔒'}</div>`;
+    achListEl.appendChild(div);
+  }
+
+  achUnlockedCountEl.textContent = count;
+  achTotalCountEl.textContent = total;
+  achProgressFill.style.width = (total ? (count / total) * 100 : 0) + '%';
+}
+
+function updateAchBadge() {
+  const count = ACHIEVEMENTS.filter(a => unlockedAch[a.id]).length;
+  achBadge.textContent = count;
+}
+
+// ---- Panel open/close ----
+const achPanel = $('achPanel');
+const achBackdrop = $('achBackdrop');
+const achCloseBtn = $('achClose');
+const achBtn = $('achBtn');
+
+function openAchPanel() {
+  renderAchievements();
+  achPanel.classList.add('open');
+  achBackdrop.classList.add('open');
+  achPanel.setAttribute('aria-hidden', 'false');
+  achBackdrop.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+}
+function closeAchPanel() {
+  achPanel.classList.remove('open');
+  achBackdrop.classList.remove('open');
+  achPanel.setAttribute('aria-hidden', 'true');
+  achBackdrop.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+}
+
+achBtn.addEventListener('click', openAchPanel);
+achCloseBtn.addEventListener('click', closeAchPanel);
+achBackdrop.addEventListener('click', closeAchPanel);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && achPanel.classList.contains('open')) closeAchPanel();
+});
+
+// ============================================================
+// CLICKING
+// ============================================================
 clickBtn.addEventListener('click', (e) => {
   state.score += state.clickPower;
+  state.clickCount = (state.clickCount || 0) + 1;
   clickBtn.classList.remove('pulse');
   void clickBtn.offsetWidth;
   clickBtn.classList.add('pulse');
@@ -404,13 +744,14 @@ clickBtn.addEventListener('click', (e) => {
   setTimeout(() => f.remove(), 800);
 
   render();
+  checkAchievements();
 });
 
-// ---- Real-time auto income (updates every second) ----
-// Normalize fractional score to keep the display and stored value consistent (fix #14).
+// ============================================================
+// TICK (auto income, every second)
+// ============================================================
 function normalizeScore() {
   if (!Number.isFinite(state.score)) { state.score = 0; return; }
-  // Keep fractional precision internally but never let it go negative.
   if (state.score < 0) state.score = 0;
 }
 
@@ -425,12 +766,12 @@ function tick() {
     updateScoreDisplay();
     refreshUpgradeLocks();
     save();
+    checkAchievements();
   } else {
     updateScoreDisplay();
   }
 }
 
-// Toggle locked/unlocked styling by matching upgrade id, not DOM index (fix #1).
 function refreshUpgradeLocks() {
   const rows = listEl.children;
   for (let i = 0; i < rows.length; i++) {
@@ -443,13 +784,13 @@ function refreshUpgradeLocks() {
 }
 
 setInterval(tick, 1000);
-// Catch up immediately when the tab becomes visible again (fix #10 — display
-// also refreshes on return, and elapsed-time math keeps the income exact).
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) tick();
 });
 
-// ---- Reset via custom modal (fix #12) ----
+// ============================================================
+// RESET
+// ============================================================
 const resetBtn = $('resetBtn');
 const modalBackdrop = $('modalBackdrop');
 const modalCancel = $('modalCancel');
@@ -460,7 +801,6 @@ function openResetModal() {
   modalBackdrop.setAttribute('aria-hidden', 'false');
   modalCancel.focus();
 }
-
 function closeResetModal() {
   modalBackdrop.classList.remove('open');
   modalBackdrop.setAttribute('aria-hidden', 'true');
@@ -482,14 +822,23 @@ modalConfirm.addEventListener('click', () => {
   state.score = 0;
   state.clickPower = 1;
   state.autoPerSec = 0;
+  state.clickCount = 0;
+  state.hasReset = true;
   state.lastTick = Date.now();
   for (const u of state.upgrades) u.level = 0;
   render();
+  checkAchievements();
   resetBtn.textContent = 'Reset! ✓';
   setTimeout(() => { resetBtn.textContent = 'Reset game'; }, 1200);
 });
 
+// ============================================================
+// INIT
+// ============================================================
+renderAchievements();
+updateAchBadge();
 render();
+checkAchievements();
 </script>
 </body>
 </html>
