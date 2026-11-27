@@ -130,6 +130,46 @@
     to { transform: translateY(-80px); opacity: 0; }
   }
 
+  /* Custom reset modal (replaces blocking confirm()) */
+  #modalBackdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  #modalBackdrop.open { display: flex; }
+  .modal {
+    background: linear-gradient(160deg, #1f2544, #16213e);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 16px;
+    padding: 24px 20px;
+    max-width: 340px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  }
+  .modal p { margin-bottom: 20px; font-size: 15px; line-height: 1.5; }
+  .modal .actions { display: flex; gap: 10px; justify-content: center; }
+  .modal button {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.25);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .modal .cancel { background: rgba(255,255,255,0.08); color: #fff; }
+  .modal .confirm { background: #c0392b; color: #fff; border-color: #e74c3c; }
+  .modal .cancel:hover { background: rgba(255,255,255,0.16); }
+  .modal .confirm:hover { background: #d64535; }
+
   @media (prefers-reduced-motion: reduce) {
     #clickBtn.pulse { animation: none; }
     .float { animation-duration: 0.01s; }
@@ -153,10 +193,19 @@
 
 <button class="reset" id="resetBtn">Reset game</button>
 
+<!-- Custom reset confirmation modal -->
+<div id="modalBackdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalText">
+    <p id="modalText">Reset all progress? This cannot be undone.</p>
+    <div class="actions">
+      <button class="cancel" id="modalCancel">Cancel</button>
+      <button class="confirm" id="modalConfirm">Reset</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ---- Game state ----
-// Costs are balanced so each upgrade costs roughly the same number of clicks
-// to afford as you progress, assuming continuous clicking.
 const state = {
   score: 0,
   clickPower: 1,
@@ -170,25 +219,78 @@ const state = {
   lastTick: Date.now(),
 };
 
-// ---- Load saved game ----
-const saved = localStorage.getItem('clicker67');
+// ---- Safe localStorage helpers (fix #5) ----
+const STORAGE_KEY = 'clicker67';
+let storageAvailable = true;
+
+function safeGetItem(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch (e) {
+    storageAvailable = false;
+    console.warn('localStorage unavailable, progress will not save.');
+    return null;
+  }
+}
+
+function safeSetItem(key, value) {
+  if (!storageAvailable) return false;
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (e) {
+    storageAvailable = false;
+    console.warn('Could not save progress (storage full or blocked).');
+    return false;
+  }
+}
+
+function safeRemoveItem(key) {
+  if (!storageAvailable) return;
+  try {
+    localStorage.removeItem(key);
+  } catch (e) {
+    // ignore
+  }
+}
+
+// ---- Load saved game with defensive structural merge (fix #6) ----
+const saved = safeGetItem(STORAGE_KEY);
 if (saved) {
   try {
     const data = JSON.parse(saved);
-    Object.assign(state, data);
-    // Migrate old saves: if any upgrade still uses the old steep multipliers,
-    // reset the multipliers to the new balanced values so difficulty scales down.
-    const balanced = {
-      power: 1.12, auto: 1.15, mega: 1.18, turbo: 1.20,
-    };
-    for (const u of state.upgrades) {
-      if (balanced[u.id] !== undefined && u.costMult !== balanced[u.id]) {
-        u.costMult = balanced[u.id];
+    if (data && typeof data === 'object') {
+      // Restore top-level numeric fields only if they are valid finite numbers.
+      if (Number.isFinite(data.score) && data.score >= 0) state.score = data.score;
+      if (Number.isFinite(data.clickPower) && data.clickPower > 0) state.clickPower = data.clickPower;
+      if (Number.isFinite(data.autoPerSec) && data.autoPerSec >= 0) state.autoPerSec = data.autoPerSec;
+
+      // Merge saved upgrade levels/costMult onto the current upgrade definitions
+      // by id, so structural changes between versions can't corrupt the game.
+      if (Array.isArray(data.upgrades)) {
+        for (const savedUp of data.upgrades) {
+          if (!savedUp || typeof savedUp.id !== 'string') continue;
+          const target = state.upgrades.find(u => u.id === savedUp.id);
+          if (!target) continue; // upgrade no longer exists — skip safely
+          if (Number.isFinite(savedUp.level) && savedUp.level >= 0) {
+            target.level = Math.floor(savedUp.level);
+          }
+          // Apply the balanced costMult for known upgrades (migration from older saves).
+          const balanced = { power: 1.12, auto: 1.15, mega: 1.18, turbo: 1.20 };
+          if (balanced[target.id] !== undefined) target.costMult = balanced[target.id];
+        }
       }
     }
+    // Reset lastTick so no offline time is awarded on load.
     state.lastTick = Date.now();
-  } catch (e) { console.warn('Save corrupted, starting fresh'); }
+  } catch (e) {
+    console.warn('Save corrupted, starting fresh');
+  }
 }
+
+// Sanitize score in case of corrupted/NaN save (fix #13)
+if (!Number.isFinite(state.score) || state.score < 0) state.score = 0;
+if (!Number.isFinite(state.clickPower) || state.clickPower <= 0) state.clickPower = 1;
 
 // ---- Helpers ----
 const $ = (id) => document.getElementById(id);
@@ -199,7 +301,14 @@ const listEl = $('upgradeList');
 const clickBtn = $('clickBtn');
 
 const costOf = (u) => Math.floor(u.baseCost * Math.pow(u.costMult, u.level));
-const fmt = (n) => n >= 1e6 ? (n/1e6).toFixed(2)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'k' : Math.floor(n);
+
+// Guard against NaN/Infinity so the display never breaks (fix #13)
+const fmt = (n) => {
+  if (!Number.isFinite(n)) return '0';
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
+  return Math.floor(n);
+};
 
 function recalc() {
   state.clickPower = 1
@@ -223,6 +332,8 @@ function render() {
     const affordable = state.score >= cost;
     const div = document.createElement('div');
     div.className = 'upgrade' + (affordable ? '' : ' locked');
+    // Stamp each row with its id so lock updates never rely on DOM order (fix #1)
+    div.dataset.id = u.id;
     div.innerHTML = `
       <div class="info">
         <div class="name">${u.name} <span style="opacity:.6">Lv.${u.level}</span></div>
@@ -249,9 +360,33 @@ function buy(u) {
   render();
 }
 
-function save() {
-  localStorage.setItem('clicker67', JSON.stringify(state));
+// ---- Throttled save (fix #4) ----
+// Auto income calls render()/updateScoreDisplay() frequently; writing to
+// localStorage every second is expensive. We debounce writes and also flush
+// on important lifecycle events.
+let saveTimer = null;
+const SAVE_THROTTLE_MS = 5000;
+
+function saveNow() {
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  safeSetItem(STORAGE_KEY, JSON.stringify(state));
 }
+
+function save() {
+  // If a save is already queued, don't queue another.
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    safeSetItem(STORAGE_KEY, JSON.stringify(state));
+  }, SAVE_THROTTLE_MS);
+}
+
+// Flush pending saves when leaving / hiding the page.
+window.addEventListener('pagehide', saveNow);
+window.addEventListener('beforeunload', saveNow);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) saveNow();
+});
 
 // ---- Clicking ----
 clickBtn.addEventListener('click', (e) => {
@@ -272,6 +407,13 @@ clickBtn.addEventListener('click', (e) => {
 });
 
 // ---- Real-time auto income (updates every second) ----
+// Normalize fractional score to keep the display and stored value consistent (fix #14).
+function normalizeScore() {
+  if (!Number.isFinite(state.score)) { state.score = 0; return; }
+  // Keep fractional precision internally but never let it go negative.
+  if (state.score < 0) state.score = 0;
+}
+
 function tick() {
   const now = Date.now();
   const elapsed = (now - state.lastTick) / 1000;
@@ -279,6 +421,7 @@ function tick() {
 
   if (state.autoPerSec > 0 && elapsed > 0) {
     state.score += state.autoPerSec * elapsed;
+    normalizeScore();
     updateScoreDisplay();
     refreshUpgradeLocks();
     save();
@@ -287,11 +430,12 @@ function tick() {
   }
 }
 
-// Toggle locked/unlocked styling on existing upgrade rows (cheap, no rebuild).
+// Toggle locked/unlocked styling by matching upgrade id, not DOM index (fix #1).
 function refreshUpgradeLocks() {
   const rows = listEl.children;
   for (let i = 0; i < rows.length; i++) {
-    const u = state.upgrades[i];
+    const id = rows[i].dataset.id;
+    const u = state.upgrades.find(up => up.id === id);
     if (!u) continue;
     const affordable = state.score >= costOf(u);
     rows[i].classList.toggle('locked', !affordable);
@@ -299,16 +443,42 @@ function refreshUpgradeLocks() {
 }
 
 setInterval(tick, 1000);
+// Catch up immediately when the tab becomes visible again (fix #10 — display
+// also refreshes on return, and elapsed-time math keeps the income exact).
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) tick();
 });
 
-// ---- Reset ----
+// ---- Reset via custom modal (fix #12) ----
 const resetBtn = $('resetBtn');
-resetBtn.addEventListener('click', () => {
-  const ok = confirm('Reset all progress? This cannot be undone.');
-  if (!ok) return;
-  localStorage.removeItem('clicker67');
+const modalBackdrop = $('modalBackdrop');
+const modalCancel = $('modalCancel');
+const modalConfirm = $('modalConfirm');
+
+function openResetModal() {
+  modalBackdrop.classList.add('open');
+  modalBackdrop.setAttribute('aria-hidden', 'false');
+  modalCancel.focus();
+}
+
+function closeResetModal() {
+  modalBackdrop.classList.remove('open');
+  modalBackdrop.setAttribute('aria-hidden', 'true');
+  resetBtn.focus();
+}
+
+resetBtn.addEventListener('click', openResetModal);
+modalCancel.addEventListener('click', closeResetModal);
+modalBackdrop.addEventListener('click', (e) => {
+  if (e.target === modalBackdrop) closeResetModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && modalBackdrop.classList.contains('open')) closeResetModal();
+});
+
+modalConfirm.addEventListener('click', () => {
+  closeResetModal();
+  safeRemoveItem(STORAGE_KEY);
   state.score = 0;
   state.clickPower = 1;
   state.autoPerSec = 0;
