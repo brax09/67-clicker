@@ -155,14 +155,16 @@
 
 <script>
 // ---- Game state ----
+// Costs are balanced so each upgrade costs roughly the same number of clicks
+// to afford as you progress, assuming continuous clicking.
 const state = {
   score: 0,
   clickPower: 1,
   upgrades: [
-    { id: 'power',  name: 'Finger Strength', desc: '+1 per click',    baseCost: 10,  costMult: 1.25, level: 0 },
-    { id: 'auto',   name: 'Auto-Clicker',    desc: '+1 per second',   baseCost: 50,  costMult: 1.30, level: 0 },
-    { id: 'mega',   name: 'Mega 67',         desc: '+5 per click',    baseCost: 250, costMult: 1.35, level: 0 },
-    { id: 'turbo',  name: 'Turbo Bot',       desc: '+5 per second',   baseCost: 1000,costMult: 1.40, level: 0 },
+    { id: 'power',  name: 'Finger Strength', desc: '+1 per click',    baseCost: 10,  costMult: 1.12, level: 0 },
+    { id: 'auto',   name: 'Auto-Clicker',    desc: '+1 per second',   baseCost: 25,  costMult: 1.15, level: 0 },
+    { id: 'mega',   name: 'Mega 67',         desc: '+5 per click',    baseCost: 60,  costMult: 1.18, level: 0 },
+    { id: 'turbo',  name: 'Turbo Bot',       desc: '+5 per second',   baseCost: 150, costMult: 1.20, level: 0 },
   ],
   autoPerSec: 0,
   lastTick: Date.now(),
@@ -174,6 +176,16 @@ if (saved) {
   try {
     const data = JSON.parse(saved);
     Object.assign(state, data);
+    // Migrate old saves: if any upgrade still uses the old steep multipliers,
+    // reset the multipliers to the new balanced values so difficulty scales down.
+    const balanced = {
+      power: 1.12, auto: 1.15, mega: 1.18, turbo: 1.20,
+    };
+    for (const u of state.upgrades) {
+      if (balanced[u.id] !== undefined && u.costMult !== balanced[u.id]) {
+        u.costMult = balanced[u.id];
+      }
+    }
     state.lastTick = Date.now();
   } catch (e) { console.warn('Save corrupted, starting fresh'); }
 }
@@ -198,7 +210,7 @@ function recalc() {
     + state.upgrades.find(u => u.id === 'turbo').level * 5;
 }
 
-// Full render: rebuilds stats + shop. Call only on purchases/clicks/load.
+// Full render: rebuilds stats + shop.
 function render() {
   recalc();
   scoreEl.textContent = fmt(state.score);
@@ -224,7 +236,7 @@ function render() {
   save();
 }
 
-// Lightweight score-only update for the per-second tick (no shop rebuild).
+// Lightweight score-only update for the per-second tick.
 function updateScoreDisplay() {
   scoreEl.textContent = fmt(state.score);
 }
@@ -267,18 +279,15 @@ function tick() {
 
   if (state.autoPerSec > 0 && elapsed > 0) {
     state.score += state.autoPerSec * elapsed;
-    // Update the visible score every tick so the count always refreshes each second.
     updateScoreDisplay();
-    // Refresh upgrade affordability classes without a full rebuild.
     refreshUpgradeLocks();
     save();
   } else {
-    // Even with no auto income, keep the display in sync every second.
     updateScoreDisplay();
   }
 }
 
-// Toggle locked/unlocked styling on existing upgrade rows (cheap, no DOM rebuild).
+// Toggle locked/unlocked styling on existing upgrade rows (cheap, no rebuild).
 function refreshUpgradeLocks() {
   const rows = listEl.children;
   for (let i = 0; i < rows.length; i++) {
@@ -290,7 +299,6 @@ function refreshUpgradeLocks() {
 }
 
 setInterval(tick, 1000);
-// Catch up immediately when the tab becomes visible again
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) tick();
 });
