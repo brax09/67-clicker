@@ -25,7 +25,6 @@
     position: relative;
   }
 
-  /* Reserve exactly the panel footprint (12px gap + 380px width) */
   @media (min-width: 900px) {
     body { padding-right: 392px; }
   }
@@ -374,7 +373,6 @@
     background: linear-gradient(90deg, #f9d423, #ff4e50);
     transition: width 0.4s ease;
   }
-  .ach.unlocked .bar .fill { background: #f9d423; }
   .ach .bar-label {
     font-size: 10px;
     font-weight: 700;
@@ -383,7 +381,6 @@
     min-width: 52px;
     text-align: right;
   }
-  .ach.unlocked .bar-label { color: #f9d423; }
 
   .ach-toast {
     position: fixed;
@@ -636,6 +633,8 @@ const ACHIEVEMENTS = [
     progress: s => ({ current: s.hasReset ? 1 : 0, target: 1 }) },
 ];
 
+// Unlocked set is frozen: loaded once, written only when a new id is added,
+// never re-derived from live game state and never cleared by game reset.
 let unlockedAch = {};
 try {
   const raw = safeGetItem(ACH_KEY);
@@ -676,11 +675,11 @@ function processToastQueue() {
 
   setTimeout(() => {
     toast.classList.remove('show');
-    // Wait for the hide transition before showing the next one.
     setTimeout(processToastQueue, TOAST_GAP_MS);
   }, TOAST_VISIBLE_MS);
 }
 
+// Only ever ADDS to the unlocked set. Never removes, never re-derives.
 function checkAchievements() {
   const newly = [];
   for (const a of ACHIEVEMENTS) {
@@ -706,7 +705,6 @@ const achProgressFill = $('achProgressFill');
 const achBadge = $('achBadge');
 const achHeaderCount = $('achHeaderCount');
 
-// Cache row references so per-click progress updates don't query the DOM.
 let achRowRefs = [];
 
 function renderAchievements() {
@@ -719,14 +717,12 @@ function renderAchievements() {
     const isUnlocked = !!unlockedAch[a.id];
     if (isUnlocked) count++;
 
-    const p = a.progress(state);
-    const pct = p.target > 0 ? Math.min(100, (p.current / p.target) * 100) : 0;
-    const label = isUnlocked ? 'Done' : `${fmt(p.current)}/${fmt(p.target)}`;
-
     const div = document.createElement('div');
     div.className = 'ach ' + (isUnlocked ? 'unlocked' : 'locked');
     div.dataset.id = a.id;
-    div.innerHTML = `
+
+    // Unlocked rows: no progress bar at all.
+    let bodyHtml = `
       <div class="ach-top">
         <div class="icon">${a.icon}</div>
         <div class="info">
@@ -734,19 +730,30 @@ function renderAchievements() {
           <div class="desc">${a.desc}</div>
         </div>
         <div class="status">${isUnlocked ? '✓' : '🔒'}</div>
-      </div>
-      <div class="bar-wrap">
-        <div class="bar"><div class="fill" style="width:${pct}%"></div></div>
-        <div class="bar-label">${label}</div>
       </div>`;
+
+    let fill = null;
+    let label = null;
+
+    if (!isUnlocked) {
+      const p = a.progress(state);
+      const pct = p.target > 0 ? Math.min(100, (p.current / p.target) * 100) : 0;
+      bodyHtml += `
+        <div class="bar-wrap">
+          <div class="bar"><div class="fill" style="width:${pct}%"></div></div>
+          <div class="bar-label">${fmt(p.current)}/${fmt(p.target)}</div>
+        </div>`;
+    }
+
+    div.innerHTML = bodyHtml;
     achListEl.appendChild(div);
 
-    achRowRefs.push({
-      id: a.id,
-      row: div,
-      fill: div.querySelector('.bar .fill'),
-      label: div.querySelector('.bar-label'),
-    });
+    if (!isUnlocked) {
+      fill = div.querySelector('.bar .fill');
+      label = div.querySelector('.bar-label');
+    }
+
+    achRowRefs.push({ id: a.id, unlocked: isUnlocked, fill, label });
   }
 
   achUnlockedCountEl.textContent = count;
@@ -755,11 +762,12 @@ function renderAchievements() {
   updateAchBadge();
 }
 
+// Only updates rows that are still locked (unlocked rows have no bar).
 function refreshAchievementProgress() {
   for (let i = 0; i < achRowRefs.length; i++) {
     const ref = achRowRefs[i];
-    if (unlockedAch[ref.id]) continue;
-    const a = ACHIEVEMENTS[i];
+    if (ref.unlocked) continue;
+    const a = ACHIEVEMENTS.find(x => x.id === ref.id);
     if (!a) continue;
     const p = a.progress(state);
     const pct = p.target > 0 ? Math.min(100, (p.current / p.target) * 100) : 0;
@@ -808,7 +816,6 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && achPanel.classList.contains('open')) closeAchPanel();
 });
 
-// Keep aria-hidden in sync with the responsive mode.
 function syncPanelMode() {
   if (isWide()) {
     achPanel.classList.remove('open');
@@ -817,7 +824,6 @@ function syncPanelMode() {
     achPanel.setAttribute('aria-hidden', 'false');
     renderAchievements();
   } else {
-    // Narrow: panel is a closed slide-over unless the user opened it.
     if (!achPanel.classList.contains('open')) {
       achPanel.setAttribute('aria-hidden', 'true');
     }
@@ -927,7 +933,6 @@ modalConfirm.addEventListener('click', () => {
   setTimeout(() => { resetBtn.textContent = 'Reset game'; }, 1200);
 });
 
-// ---- Init ----
 renderAchievements();
 syncPanelMode();
 render();
