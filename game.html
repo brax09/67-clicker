@@ -25,8 +25,9 @@
     position: relative;
   }
 
+  /* Reserve exactly the panel footprint (12px gap + 380px width) */
   @media (min-width: 900px) {
-    body { padding-right: 420px; }
+    body { padding-right: 392px; }
   }
 
   .stats { text-align: center; margin-bottom: clamp(10px, 3vw, 18px); line-height: 1.6; }
@@ -246,6 +247,18 @@
     background-clip: text;
     color: transparent;
   }
+  .ach-header .header-count {
+    display: none;
+    background: #f9d423;
+    color: #1a1a2e;
+    font-weight: 800;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  @media (min-width: 900px) {
+    .ach-header .header-count { display: inline-block; }
+  }
   .ach-close {
     background: none;
     border: 1px solid rgba(255,255,255,0.3);
@@ -438,9 +451,10 @@
 </div>
 
 <div id="achBackdrop"></div>
-<aside id="achPanel" aria-hidden="false" aria-label="Achievements">
+<aside id="achPanel" aria-hidden="true" aria-label="Achievements">
   <div class="ach-header">
     <h2>Achievements</h2>
+    <span class="header-count" id="achHeaderCount">0</span>
     <button class="ach-close" id="achClose" aria-label="Close achievements">×</button>
   </div>
   <div class="ach-summary">
@@ -630,8 +644,25 @@ try {
 
 function saveAchievements() { safeSetItem(ACH_KEY, JSON.stringify(unlockedAch)); }
 
-let toastTimer = null;
-function showAchToast(name) {
+// ---- Toast queue: each unlock shows for its full duration ----
+const toastQueue = [];
+let toastActive = false;
+const TOAST_VISIBLE_MS = 2600;
+const TOAST_GAP_MS = 250;
+
+function enqueueToast(name) {
+  toastQueue.push(name);
+  if (!toastActive) processToastQueue();
+}
+
+function processToastQueue() {
+  if (toastQueue.length === 0) {
+    toastActive = false;
+    return;
+  }
+  toastActive = true;
+  const name = toastQueue.shift();
+
   let toast = document.getElementById('achToast');
   if (!toast) {
     toast = document.createElement('div');
@@ -642,8 +673,12 @@ function showAchToast(name) {
   toast.textContent = '🏆 Achievement unlocked: ' + name;
   void toast.offsetWidth;
   toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+    // Wait for the hide transition before showing the next one.
+    setTimeout(processToastQueue, TOAST_GAP_MS);
+  }, TOAST_VISIBLE_MS);
 }
 
 function checkAchievements() {
@@ -658,7 +693,7 @@ function checkAchievements() {
   }
   if (newly.length) {
     saveAchievements();
-    newly.forEach((n, i) => setTimeout(() => showAchToast(n), i * 300));
+    newly.forEach(n => enqueueToast(n));
     renderAchievements();
   }
   updateAchBadge();
@@ -669,10 +704,15 @@ const achUnlockedCountEl = $('achUnlockedCount');
 const achTotalCountEl = $('achTotalCount');
 const achProgressFill = $('achProgressFill');
 const achBadge = $('achBadge');
+const achHeaderCount = $('achHeaderCount');
+
+// Cache row references so per-click progress updates don't query the DOM.
+let achRowRefs = [];
 
 function renderAchievements() {
   const total = ACHIEVEMENTS.length;
   let count = 0;
+  achRowRefs = [];
 
   achListEl.innerHTML = '';
   for (const a of ACHIEVEMENTS) {
@@ -700,34 +740,38 @@ function renderAchievements() {
         <div class="bar-label">${label}</div>
       </div>`;
     achListEl.appendChild(div);
+
+    achRowRefs.push({
+      id: a.id,
+      row: div,
+      fill: div.querySelector('.bar .fill'),
+      label: div.querySelector('.bar-label'),
+    });
   }
 
   achUnlockedCountEl.textContent = count;
   achTotalCountEl.textContent = total;
   achProgressFill.style.width = (total ? (count / total) * 100 : 0) + '%';
+  updateAchBadge();
 }
 
 function refreshAchievementProgress() {
-  const rows = achListEl.children;
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const id = row.dataset.id;
-    const a = ACHIEVEMENTS.find(x => x.id === id);
+  for (let i = 0; i < achRowRefs.length; i++) {
+    const ref = achRowRefs[i];
+    if (unlockedAch[ref.id]) continue;
+    const a = ACHIEVEMENTS[i];
     if (!a) continue;
-    if (unlockedAch[a.id]) continue;
-
     const p = a.progress(state);
     const pct = p.target > 0 ? Math.min(100, (p.current / p.target) * 100) : 0;
-    const fill = row.querySelector('.bar .fill');
-    const lbl = row.querySelector('.bar-label');
-    if (fill) fill.style.width = pct + '%';
-    if (lbl) lbl.textContent = `${fmt(p.current)}/${fmt(p.target)}`;
+    if (ref.fill) ref.fill.style.width = pct + '%';
+    if (ref.label) ref.label.textContent = `${fmt(p.current)}/${fmt(p.target)}`;
   }
 }
 
 function updateAchBadge() {
   const count = ACHIEVEMENTS.filter(a => unlockedAch[a.id]).length;
   achBadge.textContent = count;
+  achHeaderCount.textContent = count;
 }
 
 const achPanel = $('achPanel');
@@ -736,7 +780,10 @@ const achCloseBtn = $('achClose');
 const achBtn = $('achBtn');
 const wideQuery = window.matchMedia('(min-width: 900px)');
 
+function isWide() { return wideQuery.matches; }
+
 function openAchPanel() {
+  if (isWide()) return;
   renderAchievements();
   achPanel.classList.add('open');
   achBackdrop.classList.add('open');
@@ -746,8 +793,12 @@ function openAchPanel() {
 function closeAchPanel() {
   achPanel.classList.remove('open');
   achBackdrop.classList.remove('open');
-  achPanel.setAttribute('aria-hidden', 'true');
   document.body.style.overflow = '';
+  if (isWide()) {
+    achPanel.setAttribute('aria-hidden', 'false');
+  } else {
+    achPanel.setAttribute('aria-hidden', 'true');
+  }
 }
 
 achBtn.addEventListener('click', openAchPanel);
@@ -757,11 +808,19 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && achPanel.classList.contains('open')) closeAchPanel();
 });
 
+// Keep aria-hidden in sync with the responsive mode.
 function syncPanelMode() {
-  if (wideQuery.matches) {
-    closeAchPanel();
+  if (isWide()) {
+    achPanel.classList.remove('open');
+    achBackdrop.classList.remove('open');
+    document.body.style.overflow = '';
     achPanel.setAttribute('aria-hidden', 'false');
     renderAchievements();
+  } else {
+    // Narrow: panel is a closed slide-over unless the user opened it.
+    if (!achPanel.classList.contains('open')) {
+      achPanel.setAttribute('aria-hidden', 'true');
+    }
   }
 }
 if (wideQuery.addEventListener) wideQuery.addEventListener('change', syncPanelMode);
@@ -868,8 +927,9 @@ modalConfirm.addEventListener('click', () => {
   setTimeout(() => { resetBtn.textContent = 'Reset game'; }, 1200);
 });
 
+// ---- Init ----
 renderAchievements();
-updateAchBadge();
+syncPanelMode();
 render();
 checkAchievements();
 refreshAchievementProgress();
