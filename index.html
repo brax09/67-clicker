@@ -42,7 +42,7 @@
       will-change: transform;
     }
 
-    /* title container — holds the single continuous gradient */
+    /* title container */
     h1 {
       position: relative;
       z-index: 1;
@@ -52,19 +52,20 @@
       display: inline-block;
     }
 
-    /* every letter ripples individually, but gradient is applied via the parent */
+    /* each letter ripples individually, with a pause between waves */
     h1 .char {
       display: inline-block;
-      animation: rippleChar 1.8s ease-in-out infinite;
+      animation: rippleChar 2.4s ease-in-out infinite;
       will-change: transform;
-      /* the gradient is NOT set here — it's inherited from the h1's background-clip trick
-         but we set background on each span using the parent's gradient reference */
     }
 
-    /* keyframes for the wave */
+    /* The ripple: bounce up quickly, come back down, then rest for the remainder.
+       The active portion is ~25% of the cycle, so there's a clear gap between ripples. */
     @keyframes rippleChar {
-      0%, 100% { transform: translateY(0) scale(1); }
-      50%      { transform: translateY(-10px) scale(1.06); }
+      0%   { transform: translateY(0) scale(1); }
+      12%  { transform: translateY(-10px) scale(1.06); }
+      25%  { transform: translateY(0) scale(1); }
+      100% { transform: translateY(0) scale(1); }
     }
 
     #startBtn {
@@ -97,11 +98,11 @@
 
   <script>
     (function() {
-      // ----- 1. SPLIT TITLE INTO LETTERS + APPLY SHARED GRADIENT (continuous) -----
+      // ----- 1. SPLIT TITLE INTO LETTERS + SHARED CONTINUOUS GRADIENT -----
       const h1 = document.getElementById('title');
       const text = h1.textContent;
       h1.textContent = '';
-      
+
       const spans = [];
       for (const ch of text) {
         const span = document.createElement('span');
@@ -111,34 +112,28 @@
         spans.push(span);
       }
 
-      // After layout, measure and set gradient per letter so it flows across the whole word.
-      // We use requestAnimationFrame to make sure widths are correct.
       requestAnimationFrame(() => {
-        // Get total width of the h1 (which now contains the spans)
         const h1Rect = h1.getBoundingClientRect();
         const totalWidth = h1Rect.width;
 
         spans.forEach((span, index) => {
           const spanRect = span.getBoundingClientRect();
-          // Compute the offset of this letter relative to the left edge of h1
           const leftOffset = spanRect.left - h1Rect.left;
 
-          // Create a single linear gradient that spans the full width of the h1.
-          // Each letter gets the same gradient, but we shift the background-position
-          // so that the visible part is the slice corresponding to that letter's position.
           span.style.backgroundImage = 'linear-gradient(90deg, #f9d423, #ff4e50)';
           span.style.backgroundSize = `${totalWidth}px 100%`;
-          span.style.backgroundPosition = `-${leftOffset}px 0`; // negative moves gradient left
+          span.style.backgroundPosition = `-${leftOffset}px 0`;
           span.style.webkitBackgroundClip = 'text';
           span.style.backgroundClip = 'text';
           span.style.color = 'transparent';
 
-          // Stagger the animation delay to create a travelling wave (left to right)
-          span.style.animationDelay = `${index * 0.09}s`;
+          // Stagger so the ripple travels left → right.
+          // Longer delay (0.12s) makes the wave clearly separate.
+          span.style.animationDelay = `${index * 0.12}s`;
         });
       });
 
-      // ----- 2. FALLING 67s (background) -----
+      // ----- 2. FALLING 67s -----
       (function falling67() {
         const layer = document.getElementById('bg67');
         const count = 60;
