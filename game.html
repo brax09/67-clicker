@@ -2,50 +2,63 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>67 Clicker</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
   body {
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     background: linear-gradient(160deg, #1a1a2e, #16213e 60%, #0f3460);
     color: #fff;
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 24px 16px;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
     user-select: none;
+    -webkit-user-select: none;
+    overflow-y: auto;
+    position: relative;
   }
+
   .stats {
     text-align: center;
-    margin-bottom: 18px;
+    margin-bottom: clamp(10px, 3vw, 18px);
     line-height: 1.6;
   }
-  .score { font-size: 30px; font-weight: 800; color: #f9d423; }
+  .score { font-size: clamp(24px, 7vw, 30px); font-weight: 800; color: #f9d423; }
   .per-click { font-size: 14px; opacity: 0.8; }
   .per-sec { font-size: 14px; opacity: 0.8; }
 
   #clickBtn {
-    width: 260px;
-    height: 260px;
+    width: clamp(160px, 48vw, 260px);
+    height: clamp(160px, 48vw, 260px);
     border: none;
     background: none;
     padding: 0;
     cursor: pointer;
     transition: transform 0.07s ease;
-    margin-bottom: 28px;
+    margin-bottom: clamp(16px, 5vw, 28px);
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: visible;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
   #clickBtn:active { transform: scale(0.94); }
   #clickBtn.pulse { animation: pulse 0.25s ease; }
   @keyframes pulse { 50% { transform: scale(1.06); } }
 
   #clickBtn .big67 {
-    font-size: 200px;
+    font-size: clamp(110px, 34vw, 200px);
     line-height: 1;
     font-weight: 900;
     letter-spacing: -4px;
@@ -80,6 +93,8 @@
     padding: 12px 16px;
     cursor: pointer;
     transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
   .upgrade:hover:not(.locked) { background: rgba(255,255,255,0.15); }
   .upgrade.locked { opacity: 0.45; cursor: not-allowed; }
@@ -97,6 +112,8 @@
     border-radius: 8px;
     cursor: pointer;
     font-size: 12px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
   .reset:hover { color: #fff; border-color: #fff; }
 
@@ -111,6 +128,11 @@
   }
   @keyframes floatUp {
     to { transform: translateY(-80px); opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #clickBtn.pulse { animation: none; }
+    .float { animation-duration: 0.01s; }
   }
 </style>
 </head>
@@ -143,7 +165,6 @@ const state = {
     { id: 'turbo',  name: 'Turbo Bot',       desc: '+5 per second',   baseCost: 1000,costMult: 1.40, level: 0 },
   ],
   autoPerSec: 0,
-  // Track real elapsed time so background throttling can't cheat the player
   lastTick: Date.now(),
 };
 
@@ -153,7 +174,6 @@ if (saved) {
   try {
     const data = JSON.parse(saved);
     Object.assign(state, data);
-    // Reset lastTick to "now" on load so we don't award offline time
     state.lastTick = Date.now();
   } catch (e) { console.warn('Save corrupted, starting fresh'); }
 }
@@ -234,12 +254,9 @@ clickBtn.addEventListener('click', (e) => {
 });
 
 // ---- Real-time auto income (throttle-proof) ----
-// Award income based on REAL elapsed time, not per interval tick, so the
-// 67s-per-second rate stays exactly equal to autoPerSec even when the browser
-// throttles timers in a background tab.
 function tick() {
   const now = Date.now();
-  const elapsed = (now - state.lastTick) / 1000; // real seconds elapsed
+  const elapsed = (now - state.lastTick) / 1000;
   state.lastTick = now;
 
   if (state.autoPerSec > 0 && elapsed > 0) {
@@ -248,12 +265,11 @@ function tick() {
   }
 }
 setInterval(tick, 1000);
-// Catch up immediately when the tab becomes visible again
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) tick();
 });
 
-// ---- Reset (fully working) ----
+// ---- Reset ----
 const resetBtn = $('resetBtn');
 resetBtn.addEventListener('click', () => {
   const ok = confirm('Reset all progress? This cannot be undone.');
