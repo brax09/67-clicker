@@ -629,8 +629,6 @@ const ACHIEVEMENTS = [
     progress: s => ({ current: Math.min(s.clickPower, 10), target: 10 }) },
   { id: 'per_sec_10',    icon: '🌊', name: 'Steady Stream',   desc: 'Reach +10 per second.',
     progress: s => ({ current: Math.min(s.autoPerSec, 10), target: 10 }) },
-  { id: 'reset_once',    icon: '🔄', name: 'Fresh Start',     desc: 'Reset the game once.',
-    progress: s => ({ current: s.hasReset ? 1 : 0, target: 1 }) },
 ];
 
 // Unlocked set is frozen: loaded once, written only when a new id is added,
@@ -918,7 +916,12 @@ document.addEventListener('keydown', (e) => {
 
 modalConfirm.addEventListener('click', () => {
   closeResetModal();
+
+  // Remove both saved state and achievements.
   safeRemoveItem(STORAGE_KEY);
+  safeRemoveItem(ACH_KEY);
+
+  // Reset game state.
   state.score = 0;
   state.clickPower = 1;
   state.autoPerSec = 0;
@@ -926,13 +929,24 @@ modalConfirm.addEventListener('click', () => {
   state.hasReset = true;
   state.lastTick = Date.now();
   for (const u of state.upgrades) u.level = 0;
+
+  // Clear unlocked achievements completely.
+  unlockedAch = {};
+
+  // Clear toast queue.
+  toastQueue.length = 0;
+  toastActive = false;
+
   render();
-  checkAchievements();
+  renderAchievements();
   refreshAchievementProgress();
+  checkAchievements();
+
   resetBtn.textContent = 'Reset! ✓';
   setTimeout(() => { resetBtn.textContent = 'Reset game'; }, 1200);
 });
 
+// Initial setup
 renderAchievements();
 syncPanelMode();
 render();
